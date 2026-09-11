@@ -137,11 +137,11 @@
     display:inline-flex;align-items:center;height:100%;
     white-space:nowrap;
     position:absolute;left:0;top:0;
-    animation:ticker-scroll 30s linear infinite;
+    animation:ticker-scroll 45s linear infinite;
   }
   .ann-ticker:hover{animation-play-state:paused}
   @keyframes ticker-scroll{
-    0%  {transform:translateX(100vw)}
+    0%  {transform:translateX(calc(100vw - 220px))}
     100%{transform:translateX(-100%)}
   }
   .ann-ticker-item{
@@ -338,7 +338,7 @@ const DESKS = [
   {id:5, label:'B3', svgX:522, svgY:268},
   {id:6, label:'C1', svgX:258, svgY:348, flip:true},
   {id:7, label:'C2', svgX:522, svgY:348, flip:true},
-  {id:8, label:'A3', svgX:522, svgY:100, flip:true, rotate:90, special:true},
+  {id:8, label:'A3', svgX:522, svgY:115, rotate:90, special:true},
 ];
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -542,7 +542,7 @@ function renderAnnouncements() {
 
   // Speed: ~80px per second, min 12s
   const totalChars = state.announcements.reduce((s, a) => s + a.text.length, 0);
-  const speed = Math.max(12, Math.round(totalChars * 0.18));
+  const speed = Math.max(25, Math.round(totalChars * 0.35));
   ticker.style.animation = `ticker-scroll ${speed}s linear infinite`;
 }
 
@@ -768,33 +768,38 @@ function deskRect(desk, dayBookings) {
   const rot     = desk.rotate || 0;
   const W = 100, H = 58;
 
-  // Chair position depends on flip/rotate
-  let chairCX = 0, chairCY = flip ? (H/2+13) : (-H/2-13);
-  if (rot === 90)  { chairCX =  H/2+13; chairCY = 0; }
-  if (rot === -90) { chairCX = -H/2-13; chairCY = 0; }
+  // Chair: default above, flip = below, rotate90 = right side
+  let chairCX = 0;
+  let chairCY = flip ? (H/2 + 13) : (-H/2 - 13);
+  if (rot === 90)  { chairCX = H/2 + 13; chairCY = 0; }
+  if (rot === -90) { chairCX = -(H/2 + 13); chairCY = 0; }
 
-  const labelY   = flip ? (H/2-6) : (-H/2+14);
+  // Label position — counter-rotate so text stays horizontal
+  const labelY = -H/2 + 14;
+
   const stroke   = isMine ? '#fff' : isFree ? '#cbd5e1' : 'transparent';
   const sw       = isMine ? 2 : 1.5;
   const nameText = booked ? (isMine ? '✓ Ty' : booked) : '';
 
   return `
-    <g class="desk-btn" data-desk="${desk.id}" transform="translate(${desk.svgX},${desk.svgY}) rotate(${rot})">
-      ${special ? `<rect x="${-W/2-4}" y="${-H/2-4}" width="${W+8}" height="${H+8}" rx="9" fill="none" stroke="#0f172a" stroke-width="2.5"/>` : ''}
+    <g class="desk-btn" data-desk="${desk.id}" transform="translate(${desk.svgX},${desk.svgY})">
+      ${special ? `<rect x="${-W/2-4}" y="${-H/2-4}" width="${W+8}" height="${H+8}" rx="9" fill="none" stroke="#0f172a" stroke-width="2.5" transform="rotate(${rot})"/>` : ''}
       <ellipse cx="${chairCX}" cy="${chairCY}" rx="14" ry="10"
         fill="${isFree?'#e2e8f0':fill}" fill-opacity="${isFree?1:0.55}"
-        stroke="${isFree?'#cbd5e1':'none'}" stroke-width="1"/>
+        stroke="${isFree?'#cbd5e1':'none'}" stroke-width="1"
+        transform="rotate(${rot})"/>
       <rect class="desk-body" x="${-W/2}" y="${-H/2}" width="${W}" height="${H}" rx="6" ry="6"
+        transform="rotate(${rot})"
         fill="${fill}" stroke="${stroke}" stroke-width="${sw}"
         style="filter:${booked?'drop-shadow(0 2px 8px rgba(0,0,0,.15))':'drop-shadow(0 1px 3px rgba(0,0,0,.06))'}"/>
       <text x="${-W/2+8}" y="${labelY}" font-size="11" font-weight="700"
         fill="${booked?'rgba(255,255,255,0.65)':'#94a3b8'}" font-family="system-ui,sans-serif">${desk.label}</text>
-      ${special ? `<circle cx="${W/2-10}" cy="${flip?(H/2-12):(-H/2+12)}" r="4" fill="${booked?'rgba(255,255,255,0.5)':'#0f172a'}" opacity="0.6"/>` : ''}
+      ${special ? `<circle cx="${rot===90?(H/2-4):W/2-10}" cy="${rot===90?(-H/2+4):(-H/2+12)}" r="4" fill="${booked?'rgba(255,255,255,0.5)':'#0f172a'}" opacity="0.6"/>` : ''}
       <text x="0" y="6" text-anchor="middle" font-size="${isMine?13:11}" font-weight="${isMine?700:500}"
         fill="${booked?'#fff':'#94a3b8'}" font-family="system-ui,sans-serif"
         style="text-shadow:${booked?'0 1px 2px rgba(0,0,0,.2)':'none'}">${nameText}</text>
       ${isFree ? `<text x="0" y="6" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="system-ui,sans-serif">voľný</text>` : ''}
-      <rect x="${-W/2-10}" y="${-H/2-20}" width="${W+20}" height="${H+70}" fill="transparent" rx="6"/>
+      <rect x="${-W/2-20}" y="${-H/2-20}" width="${W+40}" height="${H+60}" fill="transparent" rx="6"/>
     </g>`;
 }
 
