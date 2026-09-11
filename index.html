@@ -18,13 +18,6 @@
 
   /* ── Layout ── */
   .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
-  .header{
-    background:#0f172a;color:#f8fafc;
-    padding:12px 20px;display:flex;align-items:center;
-    justify-content:space-between;gap:12px;flex-shrink:0;flex-wrap:wrap;
-  }
-  .header-title{font-size:16px;font-weight:700;letter-spacing:-0.3px}
-  .header-sub{font-size:11px;color:#64748b;margin-top:1px}
 
   .name-bar{
     background:#ffffff;padding:10px 20px;
@@ -122,30 +115,66 @@
   .share-copy-btn{padding:6px 14px;border-radius:7px;border:none;background:var(--ink);color:#f5f0e8;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
   .share-copy-btn:hover{opacity:.85}
 
-  /* Announcements bar */
+  /* ── Announcements ticker bar (replaces header) ── */
   .ann-bar{
-    background:#1e293b;padding:0 20px;
-    display:flex;align-items:center;gap:10px;flex-shrink:0;
-    border-bottom:1px solid #334155;min-height:36px;flex-wrap:wrap;
+    background:#0f172a;
+    display:flex;align-items:center;flex-shrink:0;
+    height:52px;position:relative;overflow:hidden;
+    border-bottom:1px solid #1e293b;
   }
-  .ann-list{display:flex;gap:8px;flex:1;flex-wrap:wrap;align-items:center;padding:6px 0}
-  .ann-item{
-    display:inline-flex;align-items:center;gap:6px;
-    background:#334155;border-radius:6px;padding:3px 10px;
-    font-size:12px;color:#e2e8f0;
+  .ann-label{
+    flex-shrink:0;padding:0 16px 0 20px;
+    font-size:11px;font-weight:700;color:#6366f1;
+    letter-spacing:.8px;text-transform:uppercase;
+    border-right:1px solid #1e293b;height:100%;
+    display:flex;align-items:center;gap:6px;white-space:nowrap;
+    background:#0f172a;z-index:2;
   }
-  .ann-item .ann-del{
-    background:none;border:none;color:#64748b;cursor:pointer;
-    font-size:14px;line-height:1;padding:0;margin-left:2px;
+  .ann-ticker-wrap{
+    flex:1;overflow:hidden;height:100%;
+    mask-image:linear-gradient(to right,transparent 0,black 40px,black calc(100% - 60px),transparent 100%);
+    -webkit-mask-image:linear-gradient(to right,transparent 0,black 40px,black calc(100% - 60px),transparent 100%);
   }
-  .ann-item .ann-del:hover{color:#f43f5e}
-  .ann-empty{font-size:11px;color:#475569;font-style:italic;padding:6px 0}
+  .ann-ticker{
+    display:flex;align-items:center;height:100%;
+    white-space:nowrap;
+    animation:ticker 28s linear infinite;
+  }
+  .ann-ticker:hover{animation-play-state:paused}
+  @keyframes ticker{
+    0%  {transform:translateX(0)}
+    100%{transform:translateX(-50%)}
+  }
+  .ann-ticker-item{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:0 32px;font-size:14px;font-weight:500;color:#e2e8f0;
+  }
+  .ann-ticker-item .ann-del{
+    background:none;border:none;color:#475569;cursor:pointer;
+    font-size:15px;line-height:1;padding:0;
+    transition:color .12s;
+  }
+  .ann-ticker-item .ann-del:hover{color:#f43f5e}
+  .ann-ticker-empty{
+    display:inline-flex;align-items:center;padding:0 40px;
+    font-size:13px;color:#334155;font-style:italic;
+  }
+  .ann-actions{
+    flex-shrink:0;display:flex;align-items:center;gap:8px;
+    padding:0 14px;height:100%;background:#0f172a;z-index:2;
+    border-left:1px solid #1e293b;
+  }
   .ann-add-btn{
-    padding:4px 12px;border-radius:6px;border:1px dashed #475569;
-    background:transparent;color:#64748b;cursor:pointer;font-size:11px;
-    white-space:nowrap;flex-shrink:0;transition:all .15s;
+    padding:6px 14px;border-radius:7px;border:1px solid #334155;
+    background:transparent;color:#64748b;cursor:pointer;font-size:12px;
+    font-weight:500;white-space:nowrap;transition:all .15s;
   }
   .ann-add-btn:hover{border-color:#6366f1;color:#818cf8;background:rgba(99,102,241,.1)}
+
+  /* Realtime dot (moved into ann-actions) */
+  .rt-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;animation:pulse 2s infinite}
+  .rt-label{font-size:11px;color:#334155;display:flex;align-items:center;white-space:nowrap}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
   /* Past day overlay */
   .past-overlay{
@@ -181,22 +210,23 @@
 </div>
 
 <div class="app" id="app">
-  <div class="header">
-    <div>
-      <div class="header-title">Rezervácia stolov</div>
-      <div class="header-sub">Kancelária animátorov · 8 stolov</div>
-    </div>
-    <div style="font-size:11px;color:#334155;display:flex;align-items:center">
-      <span class="rt-dot" id="rtDot" style="background:#94a3b8"></span>
-      <span id="rtStatus">Pripájam…</span>
-    </div>
-  </div>
-
   <div class="ann-bar" id="annBar">
-    <div class="ann-list" id="annList">
-      <span class="ann-empty">Žiadne oznámenia</span>
+    <div class="ann-label">
+      <span>📢</span> Oznamy
     </div>
-    <button class="ann-add-btn" id="annAddBtn">+ Oznámenie</button>
+    <div class="ann-ticker-wrap">
+      <div class="ann-ticker" id="annTicker">
+        <span class="ann-ticker-empty">Žiadne oznámenia</span>
+        <span class="ann-ticker-empty">Žiadne oznámenia</span>
+      </div>
+    </div>
+    <div class="ann-actions">
+      <div class="rt-label">
+        <span class="rt-dot" id="rtDot" style="background:#94a3b8"></span>
+        <span id="rtStatus">Pripájam…</span>
+      </div>
+      <button class="ann-add-btn" id="annAddBtn">+ Oznam</button>
+    </div>
   </div>
 
   <div class="name-bar" id="nameBar">
@@ -240,6 +270,22 @@
         <div class="share-url" id="shareUrl">Načítavam link…</div>
         <button class="share-copy-btn" id="copyLinkBtn">Kopírovať link</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- PIN modal -->
+<div class="modal-overlay" id="pinModalOverlay" style="display:none">
+  <div class="modal" style="width:280px">
+    <h3>🔒 Admin PIN</h3>
+    <input type="password" id="pinInputField" placeholder="Zadaj PIN…" maxlength="10"
+      style="letter-spacing:4px;font-size:18px;text-align:center"/>
+    <div style="font-size:11px;color:#94a3b8;text-align:center;margin-bottom:8px;margin-top:-4px">
+      Pre správu oznamov
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" id="pinModalCancel">Zrušiť</button>
+      <button class="btn btn-primary" id="pinModalConfirm">Potvrdiť</button>
     </div>
   </div>
 </div>
@@ -458,42 +504,110 @@ function setupRealtime() {
     });
 }
 
-// ─── Announcements ────────────────────────────────────────────────────────────
-function renderAnnouncements() {
-  const list = document.getElementById('annList');
-  if (!state.announcements.length) {
-    list.innerHTML = '<span class="ann-empty">Žiadne oznámenia</span>';
-    return;
-  }
-  list.innerHTML = state.announcements.map(a => `
-    <span class="ann-item">
-      📢 ${a.text}
-      <button class="ann-del" onclick="removeAnnouncement(${a.id})" title="Zmazať">×</button>
-    </span>`
-  ).join('');
+// ─── PIN ─────────────────────────────────────────────────────────────────────
+const ADMIN_PIN = '1234';
+let pinUnlocked = false;
+let pinCallback = null;
+
+function requirePin(cb) {
+  if (pinUnlocked) { cb(); return; }
+  pinCallback = cb;
+  const pinOverlay = document.getElementById('pinModalOverlay');
+  const pinField   = document.getElementById('pinInputField');
+  pinOverlay.style.display = 'flex';
+  pinField.value = '';
+  pinField.focus();
 }
 
+function initAnnouncements() {
+
+// ─── Announcements ────────────────────────────────────────────────────────────
+function renderAnnouncements() {
+  const ticker = document.getElementById('annTicker');
+  if (!ticker) return;
+
+  if (!state.announcements.length) {
+    ticker.innerHTML = `
+      <span class="ann-ticker-empty">Žiadne oznámenia</span>
+      <span class="ann-ticker-empty">Žiadne oznámenia</span>`;
+    ticker.style.animation = 'none';
+    return;
+  }
+
+  // Build items × 2 for seamless loop
+  const items = state.announcements.map(a =>
+    `<span class="ann-ticker-item">
+      <span style="color:#6366f1;font-size:16px">•</span>
+      ${a.text}
+      <button class="ann-del" onclick="removeAnnouncementPin(${a.id})" title="Zmazať">×</button>
+    </span>`
+  ).join('');
+
+  ticker.innerHTML = items + items; // duplicate for seamless loop
+
+  // Adjust speed based on total content width — more items = faster
+  const speed = Math.max(18, state.announcements.length * 12);
+  ticker.style.animation = `ticker ${speed}s linear infinite`;
+}
+
+window.removeAnnouncementPin = function(id) {
+  requirePin(() => {
+    state.announcements = state.announcements.filter(a => a.id !== id);
+    renderAnnouncements();
+    deleteAnnouncement(id);
+  });
+};
+
 window.removeAnnouncement = async function(id) {
-  // Optimistic
   state.announcements = state.announcements.filter(a => a.id !== id);
   renderAnnouncements();
   await deleteAnnouncement(id);
 };
 
-// Announcements modal
-let annModal, annField;
+// ─── PIN ─────────────────────────────────────────────────────────────────────
+  const annAddBtn    = document.getElementById('annAddBtn');
+  const annOverlay   = document.getElementById('annModalOverlay');
+  const annField     = document.getElementById('annInputField');
+  const pinOverlay   = document.getElementById('pinModalOverlay');
+  const pinField     = document.getElementById('pinInputField');
 
-function initAnnouncements() {
-  annModal = document.getElementById('annModalOverlay');
-  annField = document.getElementById('annInputField');
-
-  document.getElementById('annAddBtn').addEventListener('click', () => {
-    annModal.style.display = 'flex';
-    annField.value = '';
-    annField.focus();
+  // PIN modal logic
+  document.getElementById('pinModalCancel').addEventListener('click', () => {
+    pinOverlay.style.display = 'none';
+    pinCallback = null;
   });
-  document.getElementById('annModalCancel').addEventListener('click', () => { annModal.style.display = 'none'; });
-  annModal.addEventListener('click', e => { if (e.target === annModal) annModal.style.display = 'none'; });
+  pinOverlay.addEventListener('click', e => { if (e.target === pinOverlay) { pinOverlay.style.display = 'none'; pinCallback = null; }});
+
+  function confirmPin() {
+    if (pinField.value === ADMIN_PIN) {
+      pinUnlocked = true;
+      pinOverlay.style.display = 'none';
+      setTimeout(() => { pinUnlocked = false; }, 5 * 60 * 1000); // auto-lock after 5 min
+      if (pinCallback) { pinCallback(); pinCallback = null; }
+    } else {
+      pinField.value = '';
+      pinField.placeholder = 'Nesprávny PIN!';
+      pinField.style.borderColor = '#ef4444';
+      setTimeout(() => { pinField.placeholder = 'Zadaj PIN…'; pinField.style.borderColor = ''; }, 1500);
+    }
+  }
+  document.getElementById('pinModalConfirm').addEventListener('click', confirmPin);
+  pinField.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  confirmPin();
+    if (e.key === 'Escape') { pinOverlay.style.display = 'none'; pinCallback = null; }
+  });
+
+  // Add button — requires PIN
+  annAddBtn.addEventListener('click', () => {
+    requirePin(() => {
+      annOverlay.style.display = 'flex';
+      annField.value = '';
+      annField.focus();
+    });
+  });
+
+  document.getElementById('annModalCancel').addEventListener('click', () => { annOverlay.style.display = 'none'; });
+  annOverlay.addEventListener('click', e => { if (e.target === annOverlay) annOverlay.style.display = 'none'; });
 
   document.getElementById('annModalAdd').addEventListener('click', async () => {
     const text = annField.value.trim();
@@ -501,7 +615,7 @@ function initAnnouncements() {
     const tempId = Date.now();
     state.announcements.unshift({ id: tempId, text });
     renderAnnouncements();
-    annModal.style.display = 'none';
+    annOverlay.style.display = 'none';
     const ok = await addAnnouncement(text);
     if (!ok) {
       state.announcements = state.announcements.filter(a => a.id !== tempId);
@@ -511,7 +625,7 @@ function initAnnouncements() {
 
   annField.addEventListener('keydown', e => {
     if (e.key === 'Enter')  document.getElementById('annModalAdd').click();
-    if (e.key === 'Escape') annModal.style.display = 'none';
+    if (e.key === 'Escape') annOverlay.style.display = 'none';
   });
 }
 
