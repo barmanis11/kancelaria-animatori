@@ -354,11 +354,22 @@ async function touchActivity(type) {
 // ─── Realtime subscriptions ───────────────────────────────────────────────────
 function setupRealtime() {
   sb.channel('office-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-      loadAll().then(render);
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, async () => {
+      // Only reload bookings, preserve local state
+      const { data: bookingRows } = await sb.from('bookings').select('*');
+      state.bookings = {};
+      (bookingRows || []).forEach(r => {
+        const k = r.booking_date;
+        if (!state.bookings[k]) state.bookings[k] = {};
+        state.bookings[k][r.desk_id] = r.name;
+      });
+      render();
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'names' }, () => {
-      loadAll().then(render);
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'names' }, async () => {
+      const { data: names } = await sb.from('names').select('*').order('created_at');
+      state.names = (names || []).map(r => ({ name: r.name, color: r.color }));
+      if (!state.activeName && state.names.length) state.activeName = state.names[0].name;
+      render();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'activity' }, payload => {
       state.activity = payload.new;
@@ -612,24 +623,39 @@ function renderFloorplan() {
 // ─── Toggle desk ──────────────────────────────────────────────────────────────
 async function toggleDesk(deskId) {
   const k = dayKey(state.year, state.month, state.selectedDay);
-  const dayBk = state.bookings[k] || {};
+  if (!state.bookings[k]) state.bookings[k] = {};
+  const dayBk = state.bookings[k];
 
   if (dayBk[deskId] === state.activeName) {
-    await deleteBooking(k, deskId);
+    // ── Optimistic: remove immediately ──
+    delete dayBk[deskId];
+    if (!Object.keys(dayBk).length) delete state.bookings[k];
+    render();
     showToast('Rezervácia zrušená');
+    // ── Persist to DB ──
+    await deleteBooking(k, deskId);
+
   } else if (dayBk[deskId]) {
     showToast(`Stôl je obsadený: ${dayBk[deskId]}`);
-    return;
+
   } else {
     const existing = Object.entries(dayBk).find(([,n]) => n === state.activeName);
     if (existing) {
       showToast(`Už máš rezervovaný stôl ${DESKS.find(d=>d.id===Number(existing[0]))?.label} — najprv ho zruš`);
       return;
     }
+    // ── Optimistic: add immediately ──
+    dayBk[deskId] = state.activeName;
+    render();
+    showToast(`Rezervovaný stôl ${DESKS.find(d=>d.id===deskId)?.label}`);
+    // ── Persist to DB ──
     const ok = await upsertBooking(k, deskId, state.activeName);
-    if (ok) showToast(`Rezervovaný stôl ${DESKS.find(d=>d.id===deskId)?.label}`);
+    if (!ok) {
+      // Rollback on error
+      delete dayBk[deskId];
+      render();
+    }
   }
-  // Realtime will trigger re-render via subscription
 }
 
 // ─── Share bar ────────────────────────────────────────────────────────────────
