@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rezervácia stolov — Kancelária animátorov</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f1f5f9;--surface:#ffffff;--wall:#374151;--floor:#c8c29a;
+    --ink:#0f172a;--ink2:#64748b;--border:#e2e8f0;
+    --free:#ffffff;--free-border:#cbd5e1;
+    --today:#ede9fe;--sel:#0f172a;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
+    font-size:14px;line-height:1.4}
+
+  /* ── Layout ── */
+  .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  .header{
+    background:#0f172a;color:#f8fafc;
+    padding:12px 20px;display:flex;align-items:center;
+    justify-content:space-between;gap:12px;flex-shrink:0;flex-wrap:wrap;
+  }
+  .header-title{font-size:16px;font-weight:700;letter-spacing:-0.3px}
+  .header-sub{font-size:11px;color:#64748b;margin-top:1px}
+
+  .name-bar{
+    background:#ffffff;padding:10px 20px;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0;
+    border-bottom:1px solid #e2e8f0;
+    box-shadow:0 1px 4px rgba(0,0,0,.05);
+  }
+  .name-bar-label-wrap{display:flex;flex-direction:column;gap:1px;margin-right:4px;flex-shrink:0}
+  .name-label-top{font-size:10px;font-weight:600;color:#94a3b8;letter-spacing:.6px;text-transform:uppercase}
+  .name-label-main{font-size:13px;font-weight:700;color:#0f172a}
+  .name-pills-wrap{display:flex;gap:7px;flex-wrap:wrap;align-items:center;flex:1}
+  .name-pill{
+    padding:8px 20px;border-radius:22px;border:2px solid transparent;
+    cursor:pointer;font-size:13px;font-weight:600;
+    transition:all .15s;white-space:nowrap;
+    background:#f1f5f9;color:#475569;
+  }
+  .name-pill:hover{background:#e2e8f0;color:#0f172a}
+  .name-pill.active{border-color:transparent;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.15);transform:translateY(-1px)}
+  .add-name-btn{
+    padding:8px 16px;border-radius:22px;
+    border:2px dashed #cbd5e1;background:transparent;
+    color:#64748b;cursor:pointer;font-size:13px;font-weight:500;
+    transition:all .15s;white-space:nowrap;
+  }
+  .add-name-btn:hover{border-color:#6366f1;color:#6366f1;background:#eef2ff}
+
+  .body{display:flex;flex:1;overflow:hidden}
+
+  /* ── Left: calendar ── */
+  .sidebar{width:300px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+  .cal-nav{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+  .cal-nav button{background:none;border:none;cursor:pointer;color:var(--ink2);font-size:18px;padding:2px 6px;border-radius:6px;transition:background .1s}
+  .cal-nav button:hover{background:#f1f5f9}
+  .cal-month{font-size:14px;font-weight:700}
+  .cal-grid{padding:8px 12px;flex-shrink:0}
+  .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
+  .cal-dow span{text-align:center;font-size:10px;font-weight:600;color:var(--ink2);padding:2px 0}
+  .cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .cal-day{
+    aspect-ratio:1;border-radius:6px;border:none;cursor:pointer;
+    font-size:12px;font-weight:500;background:var(--free);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;transition:all .1s;position:relative;padding:2px;
+  }
+  .cal-day:hover{background:#f8fafc}
+  .cal-day.is-today{background:#ede9fe;font-weight:700;color:#4f46e5}
+  .cal-day.is-sel{background:#6366f1!important;color:#fff}
+  .cal-day .day-num{font-size:11px;line-height:1}
+  .cal-day .day-dots{display:flex;gap:1px;flex-wrap:wrap;justify-content:center;max-width:20px}
+  .cal-day .day-dot{width:5px;height:5px;border-radius:50%}
+  .cal-day.weekend{opacity:.55}
+  .stats-section{flex:1;overflow-y:auto;padding:12px;border-top:1px solid var(--border)}
+  .stats-title{font-size:10px;font-weight:700;color:var(--ink2);margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase}
+  .stat-row{margin-bottom:8px}
+  .stat-name{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+  .stat-bar-bg{background:#f1f5f9;border-radius:4px;height:6px;overflow:hidden}
+  .stat-bar{height:100%;border-radius:4px;transition:width .3s}
+
+  /* ── Right ── */
+  .main{flex:1;overflow:hidden;display:flex;flex-direction:column;padding:16px;gap:16px}
+  .day-header{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .day-title{font-size:18px;font-weight:700}
+  .day-sub{font-size:12px;color:var(--ink2)}
+  .floorplan-wrap{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .floorplan-svg{max-width:100%;max-height:100%;width:100%;height:auto}
+
+  .desk-btn{cursor:pointer}
+  .desk-btn rect.desk-body{transition:filter .12s ease-out}
+
+  /* ── Modal ── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100}
+  .modal{background:#fff;border-radius:14px;padding:24px;width:320px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+  .modal h3{font-size:15px;font-weight:700;margin-bottom:14px}
+  .modal input{width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border);font-size:14px;outline:none;margin-bottom:10px}
+  .modal input:focus{border-color:#6366f1}
+  .modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+  .btn{padding:8px 18px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .12s}
+  .btn:hover{opacity:.85}
+  .btn-primary{background:#6366f1;color:#fff}
+  .btn-ghost{background:var(--border);color:var(--ink2)}
+
+  /* ── Toast ── */
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#f5f0e8;padding:10px 22px;border-radius:10px;
+    font-size:13px;font-weight:600;opacity:0;transition:all .2s;
+    white-space:nowrap;z-index:200;pointer-events:none;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* Share link */
+  .share-bar{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .share-url{flex:1;font-size:12px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:monospace}
+  .share-copy-btn{padding:6px 14px;border-radius:7px;border:none;background:var(--ink);color:#f5f0e8;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
+  .share-copy-btn:hover{opacity:.85}
+
+  /* Loading overlay */
+  .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:12px}
+  .loading-spinner{width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-text{font-size:13px;color:#64748b;font-weight:500}
+
+  /* Realtime indicator */
+  .rt-dot{width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;margin-right:5px;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  @media(max-width:700px){
+    .sidebar{width:100%;height:auto;flex-direction:row;flex-wrap:wrap}
+    .body{flex-direction:column}
+    .app{overflow:auto}
+    .body{overflow:visible}
+    .main{overflow:visible}
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Pripájam sa k databáze…</div>
+</div>
+
+<div class="app" id="app">
+  <div class="header">
+    <div>
+      <div class="header-title">Rezervácia stolov</div>
+      <div class="header-sub">Kancelária animátorov · 8 stolov</div>
+    </div>
+    <div style="font-size:11px;color:#334155;display:flex;align-items:center">
+      <span class="rt-dot" id="rtDot" style="background:#94a3b8"></span>
+      <span id="rtStatus">Pripájam…</span>
+    </div>
+  </div>
+
+  <div class="name-bar" id="nameBar">
+    <div class="name-bar-label-wrap">
+      <span class="name-label-top">Rezervuješ ako</span>
+      <span class="name-label-main" id="activeNameDisplay">—</span>
+    </div>
+    <div class="name-pills-wrap" id="namePills"></div>
+  </div>
+
+  <div class="body">
+    <div class="sidebar">
+      <div class="cal-nav">
+        <button id="prevMonth">‹</button>
+        <span class="cal-month" id="calMonth"></span>
+        <button id="nextMonth">›</button>
+      </div>
+      <div class="cal-grid">
+        <div class="cal-dow">
+          <span>Po</span><span>Ut</span><span>St</span>
+          <span>Št</span><span>Pi</span><span>So</span><span>Ne</span>
+        </div>
+        <div class="cal-days" id="calDays"></div>
+      </div>
+      <div class="stats-section">
+        <div class="stats-title">Dni v mesiaci</div>
+        <div id="statsRows"></div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="day-header">
+        <div>
+          <div class="day-title" id="dayTitle">Vyber deň v kalendári</div>
+          <div class="day-sub" id="daySub">Kliknutím na deň zobrazíš obsadenosť stolov</div>
+        </div>
+        <div id="dayOccBadge"></div>
+      </div>
+      <div class="floorplan-wrap" id="floorplanWrap"></div>
+      <div class="share-bar">
+        <div class="share-url" id="shareUrl">Načítavam link…</div>
+        <button class="share-copy-btn" id="copyLinkBtn">Kopírovať link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" style="display:none">
+  <div class="modal">
+    <h3>Pridať animátora</h3>
+    <input type="text" id="nameInputField" placeholder="Meno a priezvisko…" maxlength="30"/>
+    <div id="existingNames" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" id="modalCancel">Zavrieť</button>
+      <button class="btn btn-primary" id="modalAdd">Pridať</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ─── Supabase config ──────────────────────────────────────────────────────────
+const SUPABASE_URL  = 'https://qulkezsenlttssymgiuf.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1bGtlenNlbmx0dHNzeW1naXVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMzkzNjgsImV4cCI6MjEwNDYxNTM2OH0.sWmY4lD32hpG-5lH2bF2V0qNf27LbNVZ0qlM3vjJPgg';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const MONTHS = ['Január','Február','Marec','Apríl','Máj','Jún',
+                'Júl','August','September','Október','November','December'];
+const COLORS = [
+  '#6366f1','#f43f5e','#10b981','#f59e0b',
+  '#3b82f6','#8b5cf6','#06b6d4','#84cc16'
+];
+const DESKS = [
+  {id:1, label:'A1', svgX:258, svgY:100, flip:true},
+  {id:2, label:'A2', svgX:390, svgY:100, flip:true},
+  {id:3, label:'B1', svgX:258, svgY:268, special:true},
+  {id:4, label:'B2', svgX:390, svgY:268},
+  {id:5, label:'B3', svgX:522, svgY:268},
+  {id:6, label:'C1', svgX:258, svgY:348, flip:true},
+  {id:7, label:'C2', svgX:522, svgY:348, flip:true},
+  {id:8, label:'A3', svgX:522, svgY:100, flip:true, special:true},
+];
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let state = {
+  year: new Date().getFullYear(),
+  month: new Date().getMonth(),
+  selectedDay: null,
+  activeName: '',
+  names: [],      // [{name, color}]
+  bookings: {},   // { 'YYYY-MM-DD': { deskId: 'Name', … } }
+  activity: {},
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function dayKey(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function daysInMonth(y, m) { return new Date(y, m+1, 0).getDate(); }
+function firstDow(y, m)    { let d = new Date(y,m,1).getDay(); return d===0?6:d-1; }
+function colorOf(name) {
+  const found = state.names.find(n => n.name === name);
+  return found ? found.color : '#94a3b8';
+}
+function occupancyForDay(day) {
+  const k = dayKey(state.year, state.month, day);
+  return Object.keys(state.bookings[k] || {}).length;
+}
+function formatActivityTime(iso) {
+  if (!iso) return null;
+  const d = new Date(iso), now = new Date();
+  const diffMin = Math.floor((now - d) / 60000);
+  const diffH   = Math.floor(diffMin / 60);
+  const diffD   = Math.floor(diffH / 24);
+  if (diffMin < 1)  return 'práve teraz';
+  if (diffMin < 60) return `pred ${diffMin} min`;
+  if (diffH < 24)   return `pred ${diffH} hod`;
+  if (diffD === 1)  return `včera o ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+  return `${d.getDate()}.${d.getMonth()+1}. o ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+// ─── Supabase data layer ──────────────────────────────────────────────────────
+async function loadAll() {
+  const [{ data: names }, { data: bookingRows }, { data: actRows }] = await Promise.all([
+    sb.from('names').select('*').order('created_at'),
+    sb.from('bookings').select('*'),
+    sb.from('activity').select('*').eq('id', 1).single(),
+  ]);
+
+  state.names = (names || []).map(r => ({ name: r.name, color: r.color }));
+  if (state.names.length && !state.activeName) state.activeName = state.names[0].name;
+
+  // Rebuild bookings map — key is booking_date (YYYY-MM-DD)
+  state.bookings = {};
+  (bookingRows || []).forEach(r => {
+    const k = r.booking_date; // already YYYY-MM-DD from Postgres date type
+    if (!state.bookings[k]) state.bookings[k] = {};
+    state.bookings[k][r.desk_id] = r.name;
+  });
+
+  state.activity = actRows || {};
+}
+
+async function addName(name) {
+  const color = COLORS[state.names.length % COLORS.length];
+  const { error } = await sb.from('names').insert({ name, color });
+  if (error) { showToast('Chyba pri pridávaní mena'); return false; }
+  return true;
+}
+
+async function deleteName(name) {
+  // Must delete bookings first due to FK constraint (on delete restrict)
+  await sb.from('bookings').delete().eq('name', name);
+  await sb.from('names').delete().eq('name', name);
+}
+
+async function upsertBooking(date, deskId, name) {
+  const { error } = await sb.from('bookings').upsert(
+    { booking_date: date, desk_id: deskId, name },
+    { onConflict: 'booking_date,desk_id' }
+  );
+  if (error) { showToast('Chyba pri rezervácii'); console.error(error); return false; }
+  await touchActivity('change');
+  return true;
+}
+
+async function deleteBooking(date, deskId) {
+  await sb.from('bookings').delete().eq('booking_date', date).eq('desk_id', deskId);
+  await touchActivity('change');
+}
+
+async function touchActivity(type) {
+  const now = new Date().toISOString();
+  const patch = { last_visit: now };
+  if (type === 'change') patch.last_change = now;
+  await sb.from('activity').update(patch).eq('id', 1);
+}
+
+// ─── Realtime subscriptions ───────────────────────────────────────────────────
+function setupRealtime() {
+  sb.channel('office-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+      loadAll().then(render);
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'names' }, () => {
+      loadAll().then(render);
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity' }, payload => {
+      state.activity = payload.new;
+      renderDayHeader();
+    })
+    .subscribe(status => {
+      const dot = document.getElementById('rtDot');
+      const lbl = document.getElementById('rtStatus');
+      if (status === 'SUBSCRIBED') {
+        dot.style.background = '#10b981';
+        lbl.textContent = 'Realtime aktívny';
+      } else {
+        dot.style.background = '#f59e0b';
+        lbl.textContent = 'Pripájam…';
+      }
+    });
+}
+
+// ─── Calendar ─────────────────────────────────────────────────────────────────
+function renderCalendar() {
+  const { year, month, selectedDay } = state;
+  document.getElementById('calMonth').textContent = `${MONTHS[month]} ${year}`;
+  const total = daysInMonth(year, month);
+  const start = firstDow(year, month);
+  const today = new Date();
+  const container = document.getElementById('calDays');
+  container.innerHTML = '';
+
+  for (let i = 0; i < start; i++) container.appendChild(document.createElement('div'));
+
+  for (let d = 1; d <= total; d++) {
+    const btn = document.createElement('button');
+    btn.className = 'cal-day';
+    const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+    const isSel   = d === selectedDay;
+    const dow     = (start + d - 1) % 7;
+    if (isToday) btn.classList.add('is-today');
+    if (isSel)   btn.classList.add('is-sel');
+    if (dow >= 5) btn.classList.add('weekend');
+
+    const bk = state.bookings[dayKey(year, month, d)] || {};
+    btn.innerHTML = `<span class="day-num">${d}</span>
+      <div class="day-dots">${
+        Object.entries(bk).map(([,n]) =>
+          `<div class="day-dot" style="background:${colorOf(n)}" title="${n}"></div>`
+        ).join('')
+      }</div>`;
+    btn.addEventListener('click', () => {
+      state.selectedDay = (state.selectedDay === d) ? null : d;
+      render();
+    });
+    container.appendChild(btn);
+  }
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function renderStats() {
+  const { year, month, names } = state;
+  const total = daysInMonth(year, month);
+  const personDays = {};
+  names.forEach(n => personDays[n.name] = 0);
+  for (let d = 1; d <= total; d++) {
+    const bk = state.bookings[dayKey(year, month, d)] || {};
+    Object.values(bk).forEach(n => { if (personDays[n] !== undefined) personDays[n]++; });
+  }
+  const container = document.getElementById('statsRows');
+  if (!names.length) {
+    container.innerHTML = '<div style="color:#94a3b8;font-size:12px">Zatiaľ žiadni animátori.</div>';
+    return;
+  }
+  container.innerHTML = names.map(({ name, color }) => {
+    const days = personDays[name] || 0;
+    const pct  = Math.round(days / total * 100);
+    return `<div class="stat-row">
+      <div class="stat-name">
+        <span style="font-weight:600;color:${color}">${name}</span>
+        <span style="color:#94a3b8">${days}d</span>
+      </div>
+      <div class="stat-bar-bg">
+        <div class="stat-bar" style="width:${pct}%;background:${color}"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Name pills ───────────────────────────────────────────────────────────────
+function renderNamePills() {
+  const container = document.getElementById('namePills');
+  const display   = document.getElementById('activeNameDisplay');
+  container.innerHTML = '';
+  state.names.forEach(({ name, color }) => {
+    const pill = document.createElement('button');
+    pill.className = 'name-pill' + (name === state.activeName ? ' active' : '');
+    pill.textContent = name;
+    if (name === state.activeName) pill.style.background = color;
+    pill.addEventListener('click', () => { state.activeName = name; renderNamePills(); });
+    container.appendChild(pill);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-name-btn';
+  addBtn.textContent = '+ Pridať animátora';
+  addBtn.addEventListener('click', openModal);
+  container.appendChild(addBtn);
+  if (display) {
+    display.textContent = state.activeName || '—';
+    const found = state.names.find(n => n.name === state.activeName);
+    display.style.color = found ? found.color : '#94a3b8';
+  }
+}
+
+// ─── Day header ───────────────────────────────────────────────────────────────
+function renderDayHeader() {
+  const { selectedDay, year, month } = state;
+  const titleEl = document.getElementById('dayTitle');
+  const subEl   = document.getElementById('daySub');
+  const badgeEl = document.getElementById('dayOccBadge');
+
+  const visitStr  = state.activity?.last_visit  ? formatActivityTime(state.activity.last_visit)  : null;
+  const changeStr = state.activity?.last_change ? formatActivityTime(state.activity.last_change) : null;
+
+  const actHtml = (visitStr || changeStr) ? `
+    <div style="display:flex;flex-direction:column;gap:3px;margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0">
+      ${visitStr  ? `<div style="font-size:10px;color:#94a3b8;display:flex;align-items:center;gap:5px;justify-content:flex-end"><span>👁</span><span>${visitStr}</span></div>` : ''}
+      ${changeStr ? `<div style="font-size:10px;color:#94a3b8;display:flex;align-items:center;gap:5px;justify-content:flex-end"><span>✏️</span><span>${changeStr}</span></div>` : ''}
+    </div>` : '';
+
+  if (!selectedDay) {
+    titleEl.textContent = 'Vyber deň v kalendári';
+    subEl.textContent   = 'Kliknutím na deň zobrazíš obsadenosť stolov';
+    badgeEl.innerHTML   = actHtml ? `<div style="text-align:right">${actHtml}</div>` : '';
+  } else {
+    const bk  = state.bookings[dayKey(year, month, selectedDay)] || {};
+    const occ = Object.keys(bk).length;
+    titleEl.textContent = `${selectedDay}. ${MONTHS[month]} ${year}`;
+    subEl.textContent   = occ > 0 ? `Obsadených ${occ} z 8 stolov` : 'Všetky stoly sú voľné — klikni na stôl pre rezerváciu';
+    const pct = Math.round(occ/8*100);
+    const col = occ >= 6 ? '#ef4444' : occ >= 3 ? '#f59e0b' : '#10b981';
+    badgeEl.innerHTML = `<div style="text-align:right">
+      <div style="font-size:26px;font-weight:800;color:${col};line-height:1">${pct}%</div>
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">obsadenosť</div>
+      ${actHtml}
+    </div>`;
+  }
+}
+
+// ─── Floor plan SVG ───────────────────────────────────────────────────────────
+function deskRect(desk, dayBookings) {
+  const booked  = dayBookings[desk.id];
+  const isMine  = booked === state.activeName;
+  const isFree  = !booked;
+  const fill    = booked ? colorOf(booked) : '#fff';
+  const flip    = desk.flip || false;
+  const special = desk.special || false;
+  const W = 100, H = 58;
+  const chairCY = flip ? (H/2 + 13) : (-H/2 - 13);
+  const labelY  = flip ? (H/2 - 6)  : (-H/2 + 14);
+  const stroke  = isMine ? '#fff' : isFree ? '#cbd5e1' : 'transparent';
+  const sw      = isMine ? 2 : 1.5;
+  const nameText = booked ? (isMine ? '✓ Ty' : booked) : '';
+  const hitTop  = -H/2 - 28;
+
+  return `
+    <g class="desk-btn" data-desk="${desk.id}" transform="translate(${desk.svgX},${desk.svgY})">
+      ${special ? `<rect x="${-W/2-4}" y="${-H/2-4}" width="${W+8}" height="${H+8}" rx="9" fill="none" stroke="#0f172a" stroke-width="2.5"/>` : ''}
+      <ellipse cx="0" cy="${chairCY}" rx="14" ry="10"
+        fill="${isFree ? '#e2e8f0' : fill}" fill-opacity="${isFree?1:0.55}"
+        stroke="${isFree?'#cbd5e1':'none'}" stroke-width="1"/>
+      <rect class="desk-body" x="${-W/2}" y="${-H/2}" width="${W}" height="${H}" rx="6" ry="6"
+        fill="${fill}" stroke="${stroke}" stroke-width="${sw}"
+        style="filter:${booked?'drop-shadow(0 2px 8px rgba(0,0,0,.15))':'drop-shadow(0 1px 3px rgba(0,0,0,.06))'}"/>
+      <text x="${-W/2+8}" y="${labelY}" font-size="11" font-weight="700"
+        fill="${booked?'rgba(255,255,255,0.65)':'#94a3b8'}" font-family="system-ui,sans-serif">${desk.label}</text>
+      ${special ? `<circle cx="${W/2-10}" cy="${flip?(H/2-12):(-H/2+12)}" r="4" fill="${booked?'rgba(255,255,255,0.5)':'#0f172a'}" opacity="0.6"/>` : ''}
+      <text x="0" y="6" text-anchor="middle" font-size="${isMine?13:11}" font-weight="${isMine?700:500}"
+        fill="${booked?'#fff':'#94a3b8'}" font-family="system-ui,sans-serif"
+        style="text-shadow:${booked?'0 1px 2px rgba(0,0,0,.2)':'none'}">${nameText}</text>
+      ${isFree ? `<text x="0" y="6" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="system-ui,sans-serif">voľný</text>` : ''}
+      <rect x="${-W/2-4}" y="${hitTop}" width="${W+8}" height="${H+56}" fill="transparent" rx="6"/>
+    </g>`;
+}
+
+function buildFloorplanSVG(dayBookings) {
+  return `<svg class="floorplan-svg" viewBox="0 0 660 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="floorTile" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#e8e4d8"/>
+      <rect width="40" height="40" fill="none" stroke="#ddd8cc" stroke-width="0.6"/>
+    </pattern>
+  </defs>
+  <rect x="20" y="20" width="620" height="460" rx="4" fill="#374151"/>
+  <rect x="42" y="42" width="576" height="416" fill="url(#floorTile)"/>
+  <rect x="20" y="20"  width="22" height="90"  fill="#374151"/>
+  <rect x="20" y="160" width="22" height="320" fill="#374151"/>
+  <rect x="618" y="20"  width="22" height="108" fill="#374151"/>
+  <rect x="618" y="238" width="22" height="47"  fill="#374151"/>
+  <rect x="618" y="395" width="22" height="85"  fill="#374151"/>
+  <rect x="20" y="20" width="620" height="22" fill="#374151"/>
+  <rect x="20"  y="458" width="62"  height="22" fill="#374151"/>
+  <rect x="152" y="458" width="488" height="22" fill="#374151"/>
+  <rect x="608" y="128" width="32" height="110" rx="3" fill="#bae6fd" stroke="#7dd3fc" stroke-width="1.5"/>
+  <line x1="608" y1="128" x2="640" y2="128" stroke="#7dd3fc" stroke-width="1"/>
+  <line x1="624" y1="128" x2="624" y2="238" stroke="#7dd3fc" stroke-width="1"/>
+  <rect x="608" y="285" width="32" height="110" rx="3" fill="#bae6fd" stroke="#7dd3fc" stroke-width="1.5"/>
+  <line x1="608" y1="285" x2="640" y2="285" stroke="#7dd3fc" stroke-width="1"/>
+  <line x1="624" y1="285" x2="624" y2="395" stroke="#7dd3fc" stroke-width="1"/>
+  <rect x="42" y="90" width="18" height="70" rx="2" fill="#64748b"/>
+  <path d="M42,90 Q100,90 100,160" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="56" y="140" font-size="9" fill="#94a3b8" font-family="sans-serif" transform="rotate(-90,56,140)">vstup</text>
+  <rect x="82" y="454" width="70" height="18" rx="2" fill="#64748b"/>
+  <path d="M82,458 Q82,390 152,390" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="100" y="448" font-size="9" fill="#94a3b8" font-family="sans-serif">vstup</text>
+  <text x="55" y="78"  font-size="10" font-weight="600" fill="#94a3b8" font-family="sans-serif">— rad A —</text>
+  <text x="55" y="245" font-size="10" font-weight="600" fill="#94a3b8" font-family="sans-serif">— rad B —</text>
+  <text x="55" y="325" font-size="10" font-weight="600" fill="#94a3b8" font-family="sans-serif">— rad C —</text>
+  <rect x="430" y="450" width="188" height="20" rx="4" fill="rgba(255,255,255,0.72)"/>
+  <rect x="436" y="455" width="10" height="10" rx="2" fill="none" stroke="#0f172a" stroke-width="2"/>
+  <text x="452" y="465" font-size="9" fill="#374151" font-family="sans-serif" font-weight="600">A3, B1 — TB live verzia</text>
+  ${DESKS.map(d => deskRect(d, dayBookings)).join('\n')}
+</svg>`;
+}
+
+// ─── Floor plan render ────────────────────────────────────────────────────────
+function renderFloorplan() {
+  const { selectedDay, year, month } = state;
+  const k  = selectedDay ? dayKey(year, month, selectedDay) : null;
+  const bk = k ? (state.bookings[k] || {}) : {};
+  const wrap = document.getElementById('floorplanWrap');
+  wrap.innerHTML = buildFloorplanSVG(bk);
+
+  wrap.querySelectorAll('[data-desk]').forEach(el => {
+    const body  = el.querySelector('rect.desk-body');
+    const chair = el.querySelector('ellipse');
+    el.addEventListener('mouseenter', () => {
+      if (body)  body.style.filter  = 'brightness(0.88) saturate(1.2)';
+      if (chair) chair.style.filter = 'brightness(0.88)';
+    });
+    el.addEventListener('mouseleave', () => {
+      if (body)  body.style.filter  = '';
+      if (chair) chair.style.filter = '';
+    });
+    el.addEventListener('mousedown', () => { if (body) body.style.filter = 'brightness(0.78)'; });
+    el.addEventListener('mouseup',   () => { if (body) body.style.filter = 'brightness(0.88) saturate(1.2)'; });
+    el.addEventListener('click', () => {
+      if (!state.selectedDay) { showToast('Najprv vyber deň v kalendári'); return; }
+      if (!state.activeName)  { showToast('Najprv si vyber meno'); return; }
+      toggleDesk(Number(el.dataset.desk));
+    });
+  });
+}
+
+// ─── Toggle desk ──────────────────────────────────────────────────────────────
+async function toggleDesk(deskId) {
+  const k = dayKey(state.year, state.month, state.selectedDay);
+  const dayBk = state.bookings[k] || {};
+
+  if (dayBk[deskId] === state.activeName) {
+    await deleteBooking(k, deskId);
+    showToast('Rezervácia zrušená');
+  } else if (dayBk[deskId]) {
+    showToast(`Stôl je obsadený: ${dayBk[deskId]}`);
+    return;
+  } else {
+    const existing = Object.entries(dayBk).find(([,n]) => n === state.activeName);
+    if (existing) {
+      showToast(`Už máš rezervovaný stôl ${DESKS.find(d=>d.id===Number(existing[0]))?.label} — najprv ho zruš`);
+      return;
+    }
+    const ok = await upsertBooking(k, deskId, state.activeName);
+    if (ok) showToast(`Rezervovaný stôl ${DESKS.find(d=>d.id===deskId)?.label}`);
+  }
+  // Realtime will trigger re-render via subscription
+}
+
+// ─── Share bar ────────────────────────────────────────────────────────────────
+function renderShareBar() {
+  document.getElementById('shareUrl').textContent = window.location.href.split('?')[0];
+}
+document.getElementById('copyLinkBtn').addEventListener('click', () => {
+  const url = window.location.href.split('?')[0];
+  navigator.clipboard.writeText(url).then(() => showToast('Link skopírovaný!')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = url; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    showToast('Link skopírovaný!');
+  });
+});
+
+// ─── Month nav ────────────────────────────────────────────────────────────────
+document.getElementById('prevMonth').addEventListener('click', () => {
+  if (state.month === 0) { state.month = 11; state.year--; } else state.month--;
+  state.selectedDay = null; render();
+});
+document.getElementById('nextMonth').addEventListener('click', () => {
+  if (state.month === 11) { state.month = 0; state.year++; } else state.month++;
+  state.selectedDay = null; render();
+});
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+const modal        = document.getElementById('modalOverlay');
+const nameField    = document.getElementById('nameInputField');
+const existingCont = document.getElementById('existingNames');
+
+function openModal()  { modal.style.display = 'flex'; nameField.value = ''; nameField.focus(); renderExistingNames(); }
+function closeModal() { modal.style.display = 'none'; }
+
+function renderExistingNames() {
+  existingCont.innerHTML = state.names.map(({ name, color }) =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:14px;
+      background:${color};color:#fff;font-size:12px;font-weight:500">
+      ${name}
+      <button onclick="removeName('${name}')" style="background:none;border:none;color:rgba(255,255,255,0.8);cursor:pointer;font-size:14px;line-height:1;padding:0">×</button>
+    </span>`
+  ).join('');
+}
+
+window.removeName = async function(name) {
+  await deleteName(name);
+  if (state.activeName === name) state.activeName = '';
+  await loadAll();
+  if (!state.activeName && state.names.length) state.activeName = state.names[0].name;
+  renderExistingNames();
+  render();
+};
+
+document.getElementById('modalCancel').addEventListener('click', closeModal);
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+document.getElementById('modalAdd').addEventListener('click', async () => {
+  const n = nameField.value.trim();
+  if (!n) return;
+  if (state.names.find(x => x.name === n)) { showToast('Toto meno už existuje'); return; }
+  const ok = await addName(n);
+  if (!ok) return;
+  await loadAll();
+  state.activeName = n;
+  nameField.value = '';
+  renderExistingNames();
+  render();
+});
+
+nameField.addEventListener('keydown', e => {
+  if (e.key === 'Enter')  document.getElementById('modalAdd').click();
+  if (e.key === 'Escape') closeModal();
+});
+
+// ─── Main render ──────────────────────────────────────────────────────────────
+function render() {
+  renderCalendar();
+  renderStats();
+  renderNamePills();
+  renderFloorplan();
+  renderDayHeader();
+  renderShareBar();
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+(async () => {
+  await loadAll();
+  await touchActivity('visit');
+  const fresh = await sb.from('activity').select('*').eq('id', 1).single();
+  state.activity = fresh.data || {};
+  setupRealtime();
+  document.getElementById('loadingOverlay').style.display = 'none';
+  render();
+})();
+</script>
+</body>
+</html>
