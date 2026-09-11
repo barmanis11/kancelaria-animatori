@@ -519,8 +519,6 @@ function requirePin(cb) {
   pinField.focus();
 }
 
-function initAnnouncements() {
-
 // ─── Announcements ────────────────────────────────────────────────────────────
 function renderAnnouncements() {
   const ticker = document.getElementById('annTicker');
@@ -534,7 +532,6 @@ function renderAnnouncements() {
     return;
   }
 
-  // Build items × 2 for seamless loop
   const items = state.announcements.map(a =>
     `<span class="ann-ticker-item">
       <span style="color:#6366f1;font-size:16px">•</span>
@@ -543,9 +540,7 @@ function renderAnnouncements() {
     </span>`
   ).join('');
 
-  ticker.innerHTML = items + items; // duplicate for seamless loop
-
-  // Adjust speed based on total content width — more items = faster
+  ticker.innerHTML = items + items;
   const speed = Math.max(18, state.announcements.length * 12);
   ticker.style.animation = `ticker ${speed}s linear infinite`;
 }
@@ -563,6 +558,8 @@ window.removeAnnouncement = async function(id) {
   renderAnnouncements();
   await deleteAnnouncement(id);
 };
+
+function initAnnouncements() {
 
 // ─── PIN ─────────────────────────────────────────────────────────────────────
   const annAddBtn    = document.getElementById('annAddBtn');
