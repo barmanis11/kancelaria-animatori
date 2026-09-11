@@ -131,19 +131,18 @@
     background:#0f172a;z-index:2;
   }
   .ann-ticker-wrap{
-    flex:1;overflow:hidden;height:100%;
-    mask-image:linear-gradient(to right,transparent 0,black 40px,black calc(100% - 60px),transparent 100%);
-    -webkit-mask-image:linear-gradient(to right,transparent 0,black 40px,black calc(100% - 60px),transparent 100%);
+    flex:1;overflow:hidden;height:100%;position:relative;
   }
   .ann-ticker{
-    display:flex;align-items:center;height:100%;
+    display:inline-flex;align-items:center;height:100%;
     white-space:nowrap;
-    animation:ticker 28s linear infinite;
+    position:absolute;left:0;top:0;
+    animation:ticker-scroll 30s linear infinite;
   }
   .ann-ticker:hover{animation-play-state:paused}
-  @keyframes ticker{
-    0%  {transform:translateX(0)}
-    100%{transform:translateX(-50%)}
+  @keyframes ticker-scroll{
+    0%  {transform:translateX(100vw)}
+    100%{transform:translateX(-100%)}
   }
   .ann-ticker-item{
     display:inline-flex;align-items:center;gap:8px;
@@ -339,7 +338,7 @@ const DESKS = [
   {id:5, label:'B3', svgX:522, svgY:268},
   {id:6, label:'C1', svgX:258, svgY:348, flip:true},
   {id:7, label:'C2', svgX:522, svgY:348, flip:true},
-  {id:8, label:'A3', svgX:522, svgY:100, flip:true, special:true},
+  {id:8, label:'A3', svgX:522, svgY:100, flip:true, rotate:90, special:true},
 ];
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -525,9 +524,8 @@ function renderAnnouncements() {
   if (!ticker) return;
 
   if (!state.announcements.length) {
-    ticker.innerHTML = `
-      <span class="ann-ticker-empty">Žiadne oznámenia</span>
-      <span class="ann-ticker-empty">Žiadne oznámenia</span>`;
+    ticker.innerHTML = `<span class="ann-ticker-empty">Žiadne oznámenia</span>`;
+    ticker.style.animationDuration = '0s';
     ticker.style.animation = 'none';
     return;
   }
@@ -540,9 +538,12 @@ function renderAnnouncements() {
     </span>`
   ).join('');
 
-  ticker.innerHTML = items + items;
-  const speed = Math.max(18, state.announcements.length * 12);
-  ticker.style.animation = `ticker ${speed}s linear infinite`;
+  ticker.innerHTML = items;
+
+  // Speed: ~80px per second, min 12s
+  const totalChars = state.announcements.reduce((s, a) => s + a.text.length, 0);
+  const speed = Math.max(12, Math.round(totalChars * 0.18));
+  ticker.style.animation = `ticker-scroll ${speed}s linear infinite`;
 }
 
 window.removeAnnouncementPin = function(id) {
@@ -764,19 +765,24 @@ function deskRect(desk, dayBookings) {
   const fill    = booked ? colorOf(booked) : '#fff';
   const flip    = desk.flip || false;
   const special = desk.special || false;
+  const rot     = desk.rotate || 0;
   const W = 100, H = 58;
-  const chairCY = flip ? (H/2 + 13) : (-H/2 - 13);
-  const labelY  = flip ? (H/2 - 6)  : (-H/2 + 14);
-  const stroke  = isMine ? '#fff' : isFree ? '#cbd5e1' : 'transparent';
-  const sw      = isMine ? 2 : 1.5;
+
+  // Chair position depends on flip/rotate
+  let chairCX = 0, chairCY = flip ? (H/2+13) : (-H/2-13);
+  if (rot === 90)  { chairCX =  H/2+13; chairCY = 0; }
+  if (rot === -90) { chairCX = -H/2-13; chairCY = 0; }
+
+  const labelY   = flip ? (H/2-6) : (-H/2+14);
+  const stroke   = isMine ? '#fff' : isFree ? '#cbd5e1' : 'transparent';
+  const sw       = isMine ? 2 : 1.5;
   const nameText = booked ? (isMine ? '✓ Ty' : booked) : '';
-  const hitTop  = -H/2 - 28;
 
   return `
-    <g class="desk-btn" data-desk="${desk.id}" transform="translate(${desk.svgX},${desk.svgY})">
+    <g class="desk-btn" data-desk="${desk.id}" transform="translate(${desk.svgX},${desk.svgY}) rotate(${rot})">
       ${special ? `<rect x="${-W/2-4}" y="${-H/2-4}" width="${W+8}" height="${H+8}" rx="9" fill="none" stroke="#0f172a" stroke-width="2.5"/>` : ''}
-      <ellipse cx="0" cy="${chairCY}" rx="14" ry="10"
-        fill="${isFree ? '#e2e8f0' : fill}" fill-opacity="${isFree?1:0.55}"
+      <ellipse cx="${chairCX}" cy="${chairCY}" rx="14" ry="10"
+        fill="${isFree?'#e2e8f0':fill}" fill-opacity="${isFree?1:0.55}"
         stroke="${isFree?'#cbd5e1':'none'}" stroke-width="1"/>
       <rect class="desk-body" x="${-W/2}" y="${-H/2}" width="${W}" height="${H}" rx="6" ry="6"
         fill="${fill}" stroke="${stroke}" stroke-width="${sw}"
@@ -788,7 +794,7 @@ function deskRect(desk, dayBookings) {
         fill="${booked?'#fff':'#94a3b8'}" font-family="system-ui,sans-serif"
         style="text-shadow:${booked?'0 1px 2px rgba(0,0,0,.2)':'none'}">${nameText}</text>
       ${isFree ? `<text x="0" y="6" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="system-ui,sans-serif">voľný</text>` : ''}
-      <rect x="${-W/2-4}" y="${hitTop}" width="${W+8}" height="${H+56}" fill="transparent" rx="6"/>
+      <rect x="${-W/2-10}" y="${-H/2-20}" width="${W+20}" height="${H+70}" fill="transparent" rx="6"/>
     </g>`;
 }
 
