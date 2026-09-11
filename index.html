@@ -122,7 +122,38 @@
   .share-copy-btn{padding:6px 14px;border-radius:7px;border:none;background:var(--ink);color:#f5f0e8;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
   .share-copy-btn:hover{opacity:.85}
 
-  /* Loading overlay */
+  /* Announcements bar */
+  .ann-bar{
+    background:#1e293b;padding:0 20px;
+    display:flex;align-items:center;gap:10px;flex-shrink:0;
+    border-bottom:1px solid #334155;min-height:36px;flex-wrap:wrap;
+  }
+  .ann-list{display:flex;gap:8px;flex:1;flex-wrap:wrap;align-items:center;padding:6px 0}
+  .ann-item{
+    display:inline-flex;align-items:center;gap:6px;
+    background:#334155;border-radius:6px;padding:3px 10px;
+    font-size:12px;color:#e2e8f0;
+  }
+  .ann-item .ann-del{
+    background:none;border:none;color:#64748b;cursor:pointer;
+    font-size:14px;line-height:1;padding:0;margin-left:2px;
+  }
+  .ann-item .ann-del:hover{color:#f43f5e}
+  .ann-empty{font-size:11px;color:#475569;font-style:italic;padding:6px 0}
+  .ann-add-btn{
+    padding:4px 12px;border-radius:6px;border:1px dashed #475569;
+    background:transparent;color:#64748b;cursor:pointer;font-size:11px;
+    white-space:nowrap;flex-shrink:0;transition:all .15s;
+  }
+  .ann-add-btn:hover{border-color:#6366f1;color:#818cf8;background:rgba(99,102,241,.1)}
+
+  /* Past day overlay */
+  .past-overlay{
+    position:absolute;inset:0;background:rgba(241,245,249,.7);
+    display:flex;align-items:center;justify-content:center;
+    border-radius:8px;pointer-events:none;
+    font-size:12px;color:#94a3b8;font-weight:600;gap:5px;
+  }
   .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:12px}
   .loading-spinner{width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -159,6 +190,13 @@
       <span class="rt-dot" id="rtDot" style="background:#94a3b8"></span>
       <span id="rtStatus">Pripájam…</span>
     </div>
+  </div>
+
+  <div class="ann-bar" id="annBar">
+    <div class="ann-list" id="annList">
+      <span class="ann-empty">Žiadne oznámenia</span>
+    </div>
+    <button class="ann-add-btn" id="annAddBtn">+ Oznámenie</button>
   </div>
 
   <div class="name-bar" id="nameBar">
@@ -206,7 +244,19 @@
   </div>
 </div>
 
-<!-- Modal -->
+<!-- Announcements modal -->
+<div class="modal-overlay" id="annModalOverlay" style="display:none">
+  <div class="modal">
+    <h3>📢 Nové oznámenie</h3>
+    <input type="text" id="annInputField" placeholder="Text oznámenia…" maxlength="120"/>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" id="annModalCancel">Zavrieť</button>
+      <button class="btn btn-primary" id="annModalAdd">Pridať</button>
+    </div>
+  </div>
+</div>
+
+<!-- Names modal -->
 <div class="modal-overlay" id="modalOverlay" style="display:none">
   <div class="modal">
     <h3>Pridať animátora</h3>
@@ -236,7 +286,7 @@ const COLORS = [
   '#3b82f6','#8b5cf6','#06b6d4','#84cc16'
 ];
 const DESKS = [
- // {id:1, label:'A1', svgX:258, svgY:100, flip:true},
+  {id:1, label:'A1', svgX:258, svgY:100, flip:true},
   {id:2, label:'A2', svgX:390, svgY:100, flip:true},
   {id:3, label:'B1', svgX:258, svgY:268, special:true},
   {id:4, label:'B2', svgX:390, svgY:268},
@@ -252,9 +302,10 @@ let state = {
   month: new Date().getMonth(),
   selectedDay: null,
   activeName: '',
-  names: [],      // [{name, color}]
-  bookings: {},   // { 'YYYY-MM-DD': { deskId: 'Name', … } }
+  names: [],
+  bookings: {},
   activity: {},
+  announcements: [], // [{id, text, created_at}]
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -270,6 +321,11 @@ function colorOf(name) {
 function occupancyForDay(day) {
   const k = dayKey(state.year, state.month, day);
   return Object.keys(state.bookings[k] || {}).length;
+}
+function isPastDay(y, m, d) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const check = new Date(y, m, d);
+  return check < today;
 }
 function formatActivityTime(iso) {
   if (!iso) return null;
@@ -296,24 +352,25 @@ function showToast(msg) {
 
 // ─── Supabase data layer ──────────────────────────────────────────────────────
 async function loadAll() {
-  const [{ data: names }, { data: bookingRows }, { data: actRows }] = await Promise.all([
+  const [{ data: names }, { data: bookingRows }, { data: actRows }, { data: annRows }] = await Promise.all([
     sb.from('names').select('*').order('created_at'),
     sb.from('bookings').select('*'),
     sb.from('activity').select('*').eq('id', 1).single(),
+    sb.from('announcements').select('*').order('created_at', { ascending: false }),
   ]);
 
   state.names = (names || []).map(r => ({ name: r.name, color: r.color }));
   if (state.names.length && !state.activeName) state.activeName = state.names[0].name;
 
-  // Rebuild bookings map — key is booking_date (YYYY-MM-DD)
   state.bookings = {};
   (bookingRows || []).forEach(r => {
-    const k = r.booking_date; // already YYYY-MM-DD from Postgres date type
+    const k = r.booking_date;
     if (!state.bookings[k]) state.bookings[k] = {};
     state.bookings[k][r.desk_id] = r.name;
   });
 
-  state.activity = actRows || {};
+  state.activity      = actRows || {};
+  state.announcements = annRows || [];
 }
 
 async function addName(name) {
@@ -329,7 +386,15 @@ async function deleteName(name) {
   await sb.from('names').delete().eq('name', name);
 }
 
-async function upsertBooking(date, deskId, name) {
+async function addAnnouncement(text) {
+  const { error } = await sb.from('announcements').insert({ text });
+  if (error) { showToast('Chyba pri pridávaní oznámenia'); return false; }
+  return true;
+}
+
+async function deleteAnnouncement(id) {
+  await sb.from('announcements').delete().eq('id', id);
+}
   const { error } = await sb.from('bookings').upsert(
     { booking_date: date, desk_id: deskId, name },
     { onConflict: 'booking_date,desk_id' }
@@ -355,7 +420,6 @@ async function touchActivity(type) {
 function setupRealtime() {
   sb.channel('office-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, async () => {
-      // Only reload bookings, preserve local state
       const { data: bookingRows } = await sb.from('bookings').select('*');
       state.bookings = {};
       (bookingRows || []).forEach(r => {
@@ -375,6 +439,11 @@ function setupRealtime() {
       state.activity = payload.new;
       renderDayHeader();
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, async () => {
+      const { data: annRows } = await sb.from('announcements').select('*').order('created_at', { ascending: false });
+      state.announcements = annRows || [];
+      renderAnnouncements();
+    })
     .subscribe(status => {
       const dot = document.getElementById('rtDot');
       const lbl = document.getElementById('rtStatus');
@@ -386,6 +455,63 @@ function setupRealtime() {
         lbl.textContent = 'Pripájam…';
       }
     });
+}
+
+// ─── Announcements ────────────────────────────────────────────────────────────
+function renderAnnouncements() {
+  const list = document.getElementById('annList');
+  if (!state.announcements.length) {
+    list.innerHTML = '<span class="ann-empty">Žiadne oznámenia</span>';
+    return;
+  }
+  list.innerHTML = state.announcements.map(a => `
+    <span class="ann-item">
+      📢 ${a.text}
+      <button class="ann-del" onclick="removeAnnouncement(${a.id})" title="Zmazať">×</button>
+    </span>`
+  ).join('');
+}
+
+window.removeAnnouncement = async function(id) {
+  // Optimistic
+  state.announcements = state.announcements.filter(a => a.id !== id);
+  renderAnnouncements();
+  await deleteAnnouncement(id);
+};
+
+// Announcements modal
+let annModal, annField;
+
+function initAnnouncements() {
+  annModal = document.getElementById('annModalOverlay');
+  annField = document.getElementById('annInputField');
+
+  document.getElementById('annAddBtn').addEventListener('click', () => {
+    annModal.style.display = 'flex';
+    annField.value = '';
+    annField.focus();
+  });
+  document.getElementById('annModalCancel').addEventListener('click', () => { annModal.style.display = 'none'; });
+  annModal.addEventListener('click', e => { if (e.target === annModal) annModal.style.display = 'none'; });
+
+  document.getElementById('annModalAdd').addEventListener('click', async () => {
+    const text = annField.value.trim();
+    if (!text) return;
+    const tempId = Date.now();
+    state.announcements.unshift({ id: tempId, text });
+    renderAnnouncements();
+    annModal.style.display = 'none';
+    const ok = await addAnnouncement(text);
+    if (!ok) {
+      state.announcements = state.announcements.filter(a => a.id !== tempId);
+      renderAnnouncements();
+    }
+  });
+
+  annField.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  document.getElementById('annModalAdd').click();
+    if (e.key === 'Escape') annModal.style.display = 'none';
+  });
 }
 
 // ─── Calendar ─────────────────────────────────────────────────────────────────
@@ -471,7 +597,7 @@ function renderNamePills() {
   const addBtn = document.createElement('button');
   addBtn.className = 'add-name-btn';
   addBtn.textContent = '+ Pridať animátora';
-  addBtn.addEventListener('click', openModal);
+  addBtn.addEventListener('click', () => window.openNamesModal && window.openNamesModal());
   container.appendChild(addBtn);
   if (display) {
     display.textContent = state.activeName || '—';
@@ -503,13 +629,16 @@ function renderDayHeader() {
   } else {
     const bk  = state.bookings[dayKey(year, month, selectedDay)] || {};
     const occ = Object.keys(bk).length;
+    const past = isPastDay(year, month, selectedDay);
     titleEl.textContent = `${selectedDay}. ${MONTHS[month]} ${year}`;
-    subEl.textContent   = occ > 0 ? `Obsadených ${occ} z 8 stolov` : 'Všetky stoly sú voľné — klikni na stôl pre rezerváciu';
+    subEl.innerHTML = past
+      ? `<span style="color:#f59e0b;font-weight:600">🔒 Minulý deň — rezervácie sú uzamknuté</span>`
+      : (occ > 0 ? `Obsadených ${occ} z 8 stolov` : 'Všetky stoly sú voľné — klikni na stôl pre rezerváciu');
     const pct = Math.round(occ/8*100);
     const col = occ >= 6 ? '#ef4444' : occ >= 3 ? '#f59e0b' : '#10b981';
     badgeEl.innerHTML = `<div style="text-align:right">
-      <div style="font-size:26px;font-weight:800;color:${col};line-height:1">${pct}%</div>
-      <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">obsadenosť</div>
+      <div style="font-size:26px;font-weight:800;color:${past?'#94a3b8':col};line-height:1">${pct}%</div>
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">${past ? '🔒 uzamknuté' : 'obsadenosť'}</div>
       ${actHtml}
     </div>`;
   }
@@ -615,6 +744,10 @@ function renderFloorplan() {
     el.addEventListener('click', () => {
       if (!state.selectedDay) { showToast('Najprv vyber deň v kalendári'); return; }
       if (!state.activeName)  { showToast('Najprv si vyber meno'); return; }
+      if (isPastDay(state.year, state.month, state.selectedDay)) {
+        showToast('Minulé dni sa nedajú meniť');
+        return;
+      }
       toggleDesk(Number(el.dataset.desk));
     });
   });
@@ -662,73 +795,84 @@ async function toggleDesk(deskId) {
 function renderShareBar() {
   document.getElementById('shareUrl').textContent = window.location.href.split('?')[0];
 }
-document.getElementById('copyLinkBtn').addEventListener('click', () => {
-  const url = window.location.href.split('?')[0];
-  navigator.clipboard.writeText(url).then(() => showToast('Link skopírovaný!')).catch(() => {
-    const ta = document.createElement('textarea');
-    ta.value = url; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-    showToast('Link skopírovaný!');
-  });
-});
 
 // ─── Month nav ────────────────────────────────────────────────────────────────
-document.getElementById('prevMonth').addEventListener('click', () => {
-  if (state.month === 0) { state.month = 11; state.year--; } else state.month--;
-  state.selectedDay = null; render();
-});
-document.getElementById('nextMonth').addEventListener('click', () => {
-  if (state.month === 11) { state.month = 0; state.year++; } else state.month++;
-  state.selectedDay = null; render();
-});
+function initUI() {
+  document.getElementById('copyLinkBtn').addEventListener('click', () => {
+    const url = window.location.href.split('?')[0];
+    navigator.clipboard.writeText(url).then(() => showToast('Link skopírovaný!')).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = url; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      showToast('Link skopírovaný!');
+    });
+  });
 
-// ─── Modal ────────────────────────────────────────────────────────────────────
-const modal        = document.getElementById('modalOverlay');
-const nameField    = document.getElementById('nameInputField');
-const existingCont = document.getElementById('existingNames');
+  document.getElementById('prevMonth').addEventListener('click', () => {
+    if (state.month === 0) { state.month = 11; state.year--; } else state.month--;
+    state.selectedDay = null; render();
+  });
+  document.getElementById('nextMonth').addEventListener('click', () => {
+    if (state.month === 11) { state.month = 0; state.year++; } else state.month++;
+    state.selectedDay = null; render();
+  });
 
-function openModal()  { modal.style.display = 'flex'; nameField.value = ''; nameField.focus(); renderExistingNames(); }
-function closeModal() { modal.style.display = 'none'; }
+  // Names modal
+  const modal     = document.getElementById('modalOverlay');
+  const nameField = document.getElementById('nameInputField');
+  const existingCont = document.getElementById('existingNames');
 
-function renderExistingNames() {
-  existingCont.innerHTML = state.names.map(({ name, color }) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:14px;
-      background:${color};color:#fff;font-size:12px;font-weight:500">
-      ${name}
-      <button onclick="removeName('${name}')" style="background:none;border:none;color:rgba(255,255,255,0.8);cursor:pointer;font-size:14px;line-height:1;padding:0">×</button>
-    </span>`
-  ).join('');
+  function openModal()  { modal.style.display = 'flex'; nameField.value = ''; nameField.focus(); renderExistingNames(); }
+  function closeModal() { modal.style.display = 'none'; }
+
+  function renderExistingNames() {
+    existingCont.innerHTML = state.names.map(({ name, color }) =>
+      `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:14px;
+        background:${color};color:#fff;font-size:12px;font-weight:500">
+        ${name}
+        <button onclick="removeName('${name}')" style="background:none;border:none;color:rgba(255,255,255,0.8);cursor:pointer;font-size:14px;line-height:1;padding:0">×</button>
+      </span>`
+    ).join('');
+  }
+
+  window.openModal = openModal;
+
+  window.removeName = async function(name) {
+    await deleteName(name);
+    if (state.activeName === name) state.activeName = '';
+    await loadAll();
+    if (!state.activeName && state.names.length) state.activeName = state.names[0].name;
+    renderExistingNames();
+    render();
+  };
+
+  document.getElementById('modalCancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+  document.getElementById('modalAdd').addEventListener('click', async () => {
+    const n = nameField.value.trim();
+    if (!n) return;
+    if (state.names.find(x => x.name === n)) { showToast('Toto meno už existuje'); return; }
+    const ok = await addName(n);
+    if (!ok) return;
+    await loadAll();
+    state.activeName = n;
+    nameField.value = '';
+    renderExistingNames();
+    render();
+  });
+
+  nameField.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  document.getElementById('modalAdd').click();
+    if (e.key === 'Escape') closeModal();
+  });
+
+  // Wire up "add animator" button in name pills to open modal
+  window.openNamesModal = openModal;
+
+  // Announcements
+  initAnnouncements();
 }
-
-window.removeName = async function(name) {
-  await deleteName(name);
-  if (state.activeName === name) state.activeName = '';
-  await loadAll();
-  if (!state.activeName && state.names.length) state.activeName = state.names[0].name;
-  renderExistingNames();
-  render();
-};
-
-document.getElementById('modalCancel').addEventListener('click', closeModal);
-modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-
-document.getElementById('modalAdd').addEventListener('click', async () => {
-  const n = nameField.value.trim();
-  if (!n) return;
-  if (state.names.find(x => x.name === n)) { showToast('Toto meno už existuje'); return; }
-  const ok = await addName(n);
-  if (!ok) return;
-  await loadAll();
-  state.activeName = n;
-  nameField.value = '';
-  renderExistingNames();
-  render();
-});
-
-nameField.addEventListener('keydown', e => {
-  if (e.key === 'Enter')  document.getElementById('modalAdd').click();
-  if (e.key === 'Escape') closeModal();
-});
 
 // ─── Main render ──────────────────────────────────────────────────────────────
 function render() {
@@ -738,10 +882,12 @@ function render() {
   renderFloorplan();
   renderDayHeader();
   renderShareBar();
+  renderAnnouncements();
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 (async () => {
+  initUI();
   await loadAll();
   await touchActivity('visit');
   const fresh = await sb.from('activity').select('*').eq('id', 1).single();
