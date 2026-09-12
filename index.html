@@ -221,6 +221,78 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   .loading-text{font-size:13px;color:#64748b;font-weight:500}
 
+  /* ── Live chat ── */
+  .chat-bubble{
+    position:fixed;bottom:24px;right:24px;z-index:400;
+    width:48px;height:48px;border-radius:50%;
+    background:#6366f1;color:#fff;border:none;
+    font-size:22px;cursor:pointer;
+    box-shadow:0 4px 16px rgba(99,102,241,.4);
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .15s,box-shadow .15s;
+  }
+  .chat-bubble:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(99,102,241,.5)}
+  .chat-badge{
+    position:absolute;top:-4px;right:-4px;
+    background:#f43f5e;color:#fff;border-radius:10px;
+    font-size:10px;font-weight:700;padding:1px 5px;
+    min-width:16px;text-align:center;display:none;
+  }
+  .chat-panel{
+    position:fixed;bottom:84px;right:24px;z-index:400;
+    width:320px;height:420px;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);
+    display:flex;flex-direction:column;overflow:hidden;
+    transform:scale(0.95) translateY(10px);opacity:0;
+    transition:transform .18s ease,opacity .18s ease;
+    pointer-events:none;
+  }
+  .chat-panel.open{transform:scale(1) translateY(0);opacity:1;pointer-events:all}
+  .chat-header{
+    padding:12px 16px;background:#0f172a;color:#f8fafc;
+    font-size:14px;font-weight:700;display:flex;align-items:center;
+    justify-content:space-between;flex-shrink:0;
+  }
+  .chat-close{background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;line-height:1;padding:0}
+  .chat-close:hover{color:#f8fafc}
+  .chat-messages{
+    flex:1;overflow-y:auto;padding:12px;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .chat-messages::-webkit-scrollbar{width:4px}
+  .chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .chat-msg{display:flex;flex-direction:column;gap:2px;max-width:85%}
+  .chat-msg.mine{align-self:flex-end;align-items:flex-end}
+  .chat-msg.theirs{align-self:flex-start}
+  .chat-msg-name{font-size:10px;font-weight:600;color:#94a3b8;padding:0 4px}
+  .chat-msg-bubble{
+    padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.4;word-break:break-word;
+  }
+  .chat-msg.mine .chat-msg-bubble{background:#6366f1;color:#fff;border-bottom-right-radius:4px}
+  .chat-msg.theirs .chat-msg-bubble{background:var(--border);color:var(--ink);border-bottom-left-radius:4px}
+  .chat-msg-time{font-size:10px;color:#94a3b8;padding:0 4px}
+  .chat-empty{flex:1;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;font-style:italic}
+  .chat-input-row{
+    display:flex;gap:8px;padding:10px 12px;
+    border-top:1px solid var(--border);flex-shrink:0;background:var(--surface);
+  }
+  .chat-input{
+    flex:1;padding:8px 12px;border-radius:20px;
+    border:1px solid var(--border);background:var(--bg);
+    color:var(--ink);font-size:13px;outline:none;transition:border-color .15s;
+  }
+  .chat-input:focus{border-color:#6366f1}
+  .chat-send{
+    width:36px;height:36px;border-radius:50%;border:none;
+    background:#6366f1;color:#fff;font-size:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;transition:background .15s;
+  }
+  .chat-send:hover{background:#4f46e5}
+  .chat-send:disabled{background:#cbd5e1;cursor:not-allowed}
+  [data-theme="dark"] .chat-msg.theirs .chat-msg-bubble{background:#334155;color:#f1f5f9}
+
   /* Realtime indicator */
   .rt-dot{width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;margin-right:5px;animation:pulse 2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
@@ -346,6 +418,28 @@
       <button class="btn btn-ghost" id="modalCancel">Zavrieť</button>
       <button class="btn btn-primary" id="modalAdd">Pridať</button>
     </div>
+  </div>
+</div>
+
+<!-- Live chat -->
+<button class="chat-bubble" id="chatBubble" title="Live chat">
+  💬
+  <span class="chat-badge" id="chatBadge">0</span>
+</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span>💬</span> Live chat
+      <span class="rt-dot" style="background:#10b981;margin-left:4px"></span>
+    </div>
+    <button class="chat-close" id="chatClose">×</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-empty" id="chatEmpty">Zatiaľ žiadne správy…</div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chatInput" placeholder="Napíš správu…" maxlength="300" autocomplete="off"/>
+    <button class="chat-send" id="chatSend">➤</button>
   </div>
 </div>
 
@@ -525,7 +619,9 @@ function setupRealtime() {
       state.announcements = annRows || [];
       renderAnnouncements();
     })
-    .subscribe(status => {
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+      chatAddMessage(payload.new, false);
+    })
       const dot = document.getElementById('rtDot');
       const lbl = document.getElementById('rtStatus');
       if (status === 'SUBSCRIBED') {
@@ -536,6 +632,82 @@ function setupRealtime() {
         lbl.textContent = 'Pripájam…';
       }
     });
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+let chatOpen = false;
+let chatUnread = 0;
+let chatMessages = [];
+let chatMyIds = new Set();
+
+function chatFormatTime(iso) {
+  const d = new Date(iso);
+  return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+}
+
+function chatAddMessage(msg, fromHistory) {
+  if (!fromHistory && chatMyIds.has(msg.id)) return;
+  chatMessages.push(msg);
+  const container = document.getElementById('chatMessages');
+  const empty     = document.getElementById('chatEmpty');
+  if (empty) empty.remove();
+  const isMine = msg.name === state.activeName;
+  const div = document.createElement('div');
+  div.className = `chat-msg ${isMine ? 'mine' : 'theirs'}`;
+  div.innerHTML = `
+    ${!isMine ? `<div class="chat-msg-name" style="color:${colorOf(msg.name)}">${msg.name}</div>` : ''}
+    <div class="chat-msg-bubble">${msg.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+    <div class="chat-msg-time">${chatFormatTime(msg.created_at)}</div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  if (!chatOpen && !isMine) {
+    chatUnread++;
+    const badge = document.getElementById('chatBadge');
+    badge.style.display = 'block';
+    badge.textContent = chatUnread > 9 ? '9+' : chatUnread;
+  }
+}
+
+async function chatLoadHistory() {
+  const { data } = await sb.from('messages').select('*').order('created_at').limit(80);
+  (data || []).forEach(m => chatAddMessage(m, true));
+}
+
+async function chatSend() {
+  const input = document.getElementById('chatInput');
+  const text  = input.value.trim();
+  if (!text) return;
+  if (!state.activeName) { showToast('Najprv si vyber meno'); return; }
+  input.value = '';
+  document.getElementById('chatSend').disabled = true;
+  const tempMsg = { id: 'temp-' + Date.now(), name: state.activeName, text, created_at: new Date().toISOString() };
+  chatAddMessage(tempMsg, true);
+  const { data, error } = await sb.from('messages').insert({ name: state.activeName, text }).select().single();
+  if (!error && data) chatMyIds.add(data.id);
+  document.getElementById('chatSend').disabled = false;
+}
+
+function initChat() {
+  const bubble = document.getElementById('chatBubble');
+  const panel  = document.getElementById('chatPanel');
+  document.getElementById('chatClose').addEventListener('click', () => {
+    chatOpen = false; panel.classList.remove('open');
+  });
+  bubble.addEventListener('click', () => {
+    chatOpen = !chatOpen;
+    panel.classList.toggle('open', chatOpen);
+    if (chatOpen) {
+      chatUnread = 0;
+      const badge = document.getElementById('chatBadge');
+      badge.style.display = 'none';
+      document.getElementById('chatInput').focus();
+      document.getElementById('chatMessages').scrollTop = 99999;
+    }
+  });
+  document.getElementById('chatSend').addEventListener('click', chatSend);
+  document.getElementById('chatInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatSend(); }
+  });
 }
 
 // ─── PIN ─────────────────────────────────────────────────────────────────────
@@ -1075,12 +1247,14 @@ function render() {
 (async () => {
   try {
     initUI();
+    initChat();
     // Auto-select today
     const today = new Date();
     state.selectedDay = today.getDate();
     state.month = today.getMonth();
     state.year  = today.getFullYear();
     await loadAll();
+    await chatLoadHistory();
     await touchActivity('visit');
     const fresh = await sb.from('activity').select('*').eq('id', 1).single();
     state.activity = fresh.data || {};
