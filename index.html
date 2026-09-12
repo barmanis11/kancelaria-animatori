@@ -373,7 +373,7 @@ const DESKS = [
   {id:5, label:'B3', svgX:522, svgY:268},
   {id:6, label:'C1', svgX:258, svgY:348, flip:true},
   {id:7, label:'C2', svgX:522, svgY:348, flip:true},
-  {id:8, label:'A3', svgX:562, svgY:130, rotate:90, special:true},
+  {id:8, label:'A3', svgX:575, svgY:130, rotate:90, special:true},
 ];
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -807,19 +807,18 @@ function deskRect(desk, dayBookings) {
   const nameText = booked ? (isMine ? '✓ Ty' : booked) : '';
 
   if (rot === 90) {
-    // Portrait: visually H wide × W tall (desk rect rotated 90°)
-    // Chair north (above): cy = -W/2 - 13, cx = 0
-    const chairCY = -W/2 - 13;
-    // Label: bottom-left of portrait rect (after rotation, bottom-left = left side going up)
-    //   In rotated space: x = -H/2+8, y = W/2-6
-    const labelX = -H/2 + 8, labelY = W/2 - 6;
-    // Dot: top-right corner in rotated space: cx = H/2-8, cy = -W/2+8
+    // Portrait: desk rect rotated 90° → visually H wide × W tall
+    // Chair WEST (left side): cx = -(W/2+13), cy = 0
+    const chairCX = -(W/2 + 13), chairCY = 0;
+    // Label top-left of portrait rect: in rotated coords top-left is (-H/2+8, -W/2+14)
+    const labelX = -H/2 + 8, labelY = -W/2 + 18;
+    // Dot top-right: (H/2-8, -W/2+8)
     const dotCX = H/2 - 8, dotCY = -W/2 + 8;
 
     return `
       <g class="desk-btn" data-desk="${desk.id}" transform="translate(${desk.svgX},${desk.svgY})">
         ${special ? `<rect x="${-H/2-4}" y="${-W/2-4}" width="${H+8}" height="${W+8}" rx="9" fill="none" stroke="#0f172a" stroke-width="2.5" transform="rotate(90)"/>` : ''}
-        <ellipse cx="0" cy="${chairCY}" rx="10" ry="14"
+        <ellipse cx="${chairCX}" cy="${chairCY}" rx="10" ry="14"
           fill="${isFree?'#e2e8f0':fill}" fill-opacity="${isFree?1:0.55}"
           stroke="${isFree?'#cbd5e1':'none'}" stroke-width="1"/>
         <rect class="desk-body" x="${-H/2}" y="${-W/2}" width="${H}" height="${W}" rx="6" ry="6"
@@ -833,7 +832,7 @@ function deskRect(desk, dayBookings) {
         <text x="0" y="6" text-anchor="middle" font-size="${isMine?13:11}" font-weight="${isMine?700:500}"
           fill="${booked?'#fff':'#94a3b8'}" font-family="system-ui,sans-serif">${nameText}</text>
         ${isFree ? `<text x="0" y="6" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="system-ui,sans-serif">voľný</text>` : ''}
-        <rect x="${-H/2-10}" y="${-W/2-30}" width="${H+20}" height="${W+50}" fill="transparent" rx="6"/>
+        <rect x="${-W/2-30}" y="${-W/2-10}" width="${W+H+30}" height="${W+20}" fill="transparent" rx="6"/>
       </g>`;
   }
 
