@@ -622,6 +622,7 @@ function setupRealtime() {
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
       chatAddMessage(payload.new, false);
     })
+    .subscribe(status => {
       const dot = document.getElementById('rtDot');
       const lbl = document.getElementById('rtStatus');
       if (status === 'SUBSCRIBED') {
