@@ -131,6 +131,20 @@
     --today:#312e81;--floor-bg:#2a2620;--floor-line:#332e28;
     --wall:#1e293b;
   }
+  [data-theme="dark"] .cal-day{color:#f1f5f9}
+  [data-theme="dark"] .cal-day.is-today{color:#a5b4fc}
+  [data-theme="dark"] .cal-day.is-sel{color:#fff!important}
+  [data-theme="dark"] .cal-month{color:#f1f5f9}
+  [data-theme="dark"] .sidebar{background:#1e293b}
+  [data-theme="dark"] .name-bar{background:#1e293b;border-color:#334155}
+  [data-theme="dark"] .name-pill{background:#334155;color:#94a3b8}
+  [data-theme="dark"] .main{background:#0f172a}
+  [data-theme="dark"] .share-bar{background:#1e293b;border-color:#334155}
+  [data-theme="dark"] .share-url{color:#64748b}
+  [data-theme="dark"] .stat-bar-bg{background:#334155}
+  [data-theme="dark"] .modal{background:#1e293b;color:#f1f5f9}
+  [data-theme="dark"] .modal input{background:#0f172a;border-color:#475569;color:#f1f5f9}
+  [data-theme="dark"] .btn-ghost{background:#334155;color:#94a3b8}
 
   /* ── Announcements ticker bar ── */
   .ann-bar{
@@ -141,7 +155,7 @@
   }
   .ann-label{
     flex-shrink:0;padding:0 18px 0 22px;
-    font-size:12px;font-weight:700;color:#6366f1;
+    font-size:12px;font-weight:700;color:#9f1239;
     letter-spacing:.8px;text-transform:uppercase;
     border-right:1px solid #1e293b;height:100%;
     display:flex;align-items:center;gap:6px;white-space:nowrap;
@@ -163,7 +177,7 @@
   }
   .ann-ticker-item{
     display:inline-flex;align-items:center;gap:8px;
-    padding:0 32px;font-size:15px;font-weight:500;color:#e2e8f0;
+    padding:0 32px;font-size:17px;font-weight:500;color:#e2e8f0;
   }
   .ann-ticker-item .ann-del{
     background:none;border:none;color:#475569;cursor:pointer;
@@ -359,7 +373,7 @@ const DESKS = [
   {id:5, label:'B3', svgX:522, svgY:268},
   {id:6, label:'C1', svgX:258, svgY:348, flip:true},
   {id:7, label:'C2', svgX:522, svgY:348, flip:true},
-  {id:8, label:'A3', svgX:490, svgY:130, rotate:90, special:true},
+  {id:8, label:'A3', svgX:562, svgY:130, rotate:90, special:true},
 ];
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -793,32 +807,33 @@ function deskRect(desk, dayBookings) {
   const nameText = booked ? (isMine ? '✓ Ty' : booked) : '';
 
   if (rot === 90) {
-    // Portrait orientation: desk is H wide × W tall visually
-    // Chair: below the desk (south), centered
-    const chairCX = 0, chairCY = W/2 + 13;
-    // Label: top-left of rotated rect → in rotated space top-left = (-H/2+8, -W/2+14)
-    const labelX = -H/2 + 8, labelY = -W/2 + 18;
-    // Dot (special): bottom-right corner
-    const dotCX = H/2 - 8, dotCY = W/2 - 8;
+    // Portrait: visually H wide × W tall (desk rect rotated 90°)
+    // Chair north (above): cy = -W/2 - 13, cx = 0
+    const chairCY = -W/2 - 13;
+    // Label: bottom-left of portrait rect (after rotation, bottom-left = left side going up)
+    //   In rotated space: x = -H/2+8, y = W/2-6
+    const labelX = -H/2 + 8, labelY = W/2 - 6;
+    // Dot: top-right corner in rotated space: cx = H/2-8, cy = -W/2+8
+    const dotCX = H/2 - 8, dotCY = -W/2 + 8;
 
     return `
       <g class="desk-btn" data-desk="${desk.id}" transform="translate(${desk.svgX},${desk.svgY})">
-        ${special ? `<rect x="${-H/2-4}" y="${-W/2-4}" width="${H+8}" height="${W+8}" rx="9" fill="none" stroke="#0f172a" stroke-width="2.5" transform="rotate(${rot})"/>` : ''}
-        <ellipse cx="${chairCX}" cy="${chairCY}" rx="14" ry="10"
+        ${special ? `<rect x="${-H/2-4}" y="${-W/2-4}" width="${H+8}" height="${W+8}" rx="9" fill="none" stroke="#0f172a" stroke-width="2.5" transform="rotate(90)"/>` : ''}
+        <ellipse cx="0" cy="${chairCY}" rx="10" ry="14"
           fill="${isFree?'#e2e8f0':fill}" fill-opacity="${isFree?1:0.55}"
           stroke="${isFree?'#cbd5e1':'none'}" stroke-width="1"/>
         <rect class="desk-body" x="${-H/2}" y="${-W/2}" width="${H}" height="${W}" rx="6" ry="6"
-          transform="rotate(${rot})"
+          transform="rotate(90)"
           fill="${fill}" stroke="${stroke}" stroke-width="${sw}"
           style="filter:${booked?'drop-shadow(0 2px 8px rgba(0,0,0,.15))':'drop-shadow(0 1px 3px rgba(0,0,0,.06))'}"/>
         <text x="${labelX}" y="${labelY}" font-size="11" font-weight="700"
           fill="${booked?'rgba(255,255,255,0.65)':'#94a3b8'}" font-family="system-ui,sans-serif"
-          transform="rotate(${rot})">${desk.label}</text>
-        ${special ? `<circle cx="${dotCX}" cy="${dotCY}" r="4" fill="${booked?'rgba(255,255,255,0.5)':'#0f172a'}" opacity="0.6" transform="rotate(${rot})"/>` : ''}
+          transform="rotate(90)">${desk.label}</text>
+        ${special ? `<circle cx="${dotCX}" cy="${dotCY}" r="4" fill="${booked?'rgba(255,255,255,0.5)':'#0f172a'}" opacity="0.7" transform="rotate(90)"/>` : ''}
         <text x="0" y="6" text-anchor="middle" font-size="${isMine?13:11}" font-weight="${isMine?700:500}"
           fill="${booked?'#fff':'#94a3b8'}" font-family="system-ui,sans-serif">${nameText}</text>
         ${isFree ? `<text x="0" y="6" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="system-ui,sans-serif">voľný</text>` : ''}
-        <rect x="${-H/2-10}" y="${-W/2-10}" width="${H+20}" height="${W+40}" fill="transparent" rx="6"/>
+        <rect x="${-H/2-10}" y="${-W/2-30}" width="${H+20}" height="${W+50}" fill="transparent" rx="6"/>
       </g>`;
   }
 
