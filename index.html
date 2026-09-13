@@ -1105,31 +1105,32 @@ function buildFloorplanSVG(dayBookings) {
   <rect x="20" y="20" width="620" height="460" rx="4" fill="#374151"/>
   <rect x="42" y="42" width="576" height="416" fill="url(#floorTile)"/>
   <rect x="20" y="20"  width="22" height="90"  fill="#374151"/>
-  <rect x="20" y="160" width="22" height="320" fill="#374151"/>
-  <rect x="618" y="20"  width="22" height="108" fill="#374151"/>
-  <rect x="618" y="238" width="22" height="47"  fill="#374151"/>
-  <rect x="618" y="395" width="22" height="85"  fill="#374151"/>
+  <rect x="20" y="170" width="22" height="310" fill="#374151"/>
+  <rect x="618" y="20"  width="22" height="40"  fill="#374151"/>
+  <rect x="618" y="238" width="22" height="32"  fill="#374151"/>
+  <rect x="618" y="440" width="22" height="40"  fill="#374151"/>
   <rect x="20" y="20" width="620" height="22" fill="#374151"/>
   <rect x="20"  y="458" width="62"  height="22" fill="#374151"/>
   <rect x="152" y="458" width="488" height="22" fill="#374151"/>
-  <rect x="608" y="128" width="32" height="110" rx="3" fill="#bae6fd" stroke="#7dd3fc" stroke-width="1.5"/>
-  <line x1="608" y1="128" x2="640" y2="128" stroke="#7dd3fc" stroke-width="1"/>
-  <line x1="624" y1="128" x2="624" y2="238" stroke="#7dd3fc" stroke-width="1"/>
-  <rect x="608" y="285" width="32" height="110" rx="3" fill="#bae6fd" stroke="#7dd3fc" stroke-width="1.5"/>
-  <line x1="608" y1="285" x2="640" y2="285" stroke="#7dd3fc" stroke-width="1"/>
-  <line x1="624" y1="285" x2="624" y2="395" stroke="#7dd3fc" stroke-width="1"/>
-  <rect x="42" y="90" width="18" height="70" rx="2" fill="#64748b"/>
-  <path d="M42,90 Q100,90 100,160" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
-  <text x="56" y="140" font-size="9" fill="#94a3b8" font-family="sans-serif" transform="rotate(-90,56,140)">vstup</text>
-  <rect x="82" y="454" width="70" height="18" rx="2" fill="#64748b"/>
-  <path d="M82,458 Q82,390 152,390" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
-  <text x="100" y="448" font-size="9" fill="#94a3b8" font-family="sans-serif">vstup</text>
+  <!-- Windows — tall, matching reference -->
+  <rect x="618" y="60"  width="22" height="170" rx="3" fill="#bae6fd" stroke="#7dd3fc" stroke-width="1.5"/>
+  <line x1="629" y1="60"  x2="629" y2="230" stroke="#7dd3fc" stroke-width="1"/>
+  <rect x="618" y="270" width="22" height="170" rx="3" fill="#bae6fd" stroke="#7dd3fc" stroke-width="1.5"/>
+  <line x1="629" y1="270" x2="629" y2="440" stroke="#7dd3fc" stroke-width="1"/>
+  <!-- Door top-left -->
+  <rect x="20" y="90" width="22" height="80" rx="2" fill="#64748b"/>
+  <path d="M42,90 Q100,90 100,170" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="56" y="145" font-size="9" fill="#94a3b8" font-family="sans-serif" transform="rotate(-90,56,145)">vstup</text>
+  <!-- Door bottom -->
+  <rect x="82" y="458" width="80" height="22" rx="2" fill="#64748b"/>
+  <path d="M82,458 Q82,400 160,390" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="105" y="452" font-size="9" fill="#94a3b8" font-family="sans-serif">vstup</text>
   <text x="55" y="78"  font-size="10" font-weight="600" fill="#94a3b8" font-family="sans-serif">— rad A —</text>
   <text x="55" y="245" font-size="10" font-weight="600" fill="#94a3b8" font-family="sans-serif">— rad B —</text>
   <text x="55" y="325" font-size="10" font-weight="600" fill="#94a3b8" font-family="sans-serif">— rad C —</text>
-  <rect x="430" y="450" width="188" height="20" rx="4" fill="rgba(255,255,255,0.72)"/>
-  <rect x="436" y="455" width="10" height="10" rx="2" fill="none" stroke="#0f172a" stroke-width="2"/>
-  <text x="452" y="465" font-size="9" fill="#374151" font-family="sans-serif" font-weight="600">A3, B1 — TB live verzia</text>
+  <rect x="460" y="430" width="158" height="20" rx="4" fill="rgba(255,255,255,0.72)"/>
+  <rect x="466" y="435" width="10" height="10" rx="2" fill="none" stroke="#0f172a" stroke-width="2"/>
+  <text x="482" y="445" font-size="9" fill="#374151" font-family="sans-serif" font-weight="600">A3, B1 — TB live verzia</text>
   ${DESKS.map(d => deskRect(d, dayBookings)).join('\n')}
 </svg>`;
 }
