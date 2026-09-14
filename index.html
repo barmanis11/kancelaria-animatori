@@ -1427,13 +1427,14 @@ function render() {
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-// We use email auth with fake emails: name@kancelaria.local
 function nameToEmail(name) {
-  return name.trim().toLowerCase().replace(/\s+/g, '.') + '@kancelaria.local';
+  // Fake email for Supabase auth
+  return name.trim().toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '') + '@kancelaria.local';
 }
-function emailToName(email) {
-  return email.replace('@kancelaria.local', '').replace(/\./g, ' ')
-    .split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+function getNameFromSession(session) {
+  // Always use stored display_name from metadata, never reconstruct from email
+  return session?.user?.user_metadata?.display_name || null;
 }
 
 let authMode = 'login';
@@ -1468,32 +1469,39 @@ async function handleAuthSubmit() {
   const email = nameToEmail(name);
 
   if (authMode === 'register') {
-    // Check if name already exists in names table
-    const { data: existing } = await sb.from('names').select('name').ilike('name', name).single();
-    if (existing) { showAuthError('Toto meno už existuje — prihlás sa'); btn.disabled = false; btn.textContent = 'Vytvoriť účet'; return; }
-
-    const { data, error } = await sb.auth.signUp({ email, password });
-    if (error) {
-      if (error.message.includes('already registered')) {
-        showAuthError('Účet s týmto menom už existuje — prihlás sa');
-      } else {
-        showAuthError(error.message);
-      }
+    // Check if name already taken in names table
+    const { data: existing } = await sb.from('names').select('name').ilike('name', name);
+    if (existing && existing.length > 0) {
+      showAuthError('Toto meno už existuje — prihlás sa');
       btn.disabled = false; btn.textContent = 'Vytvoriť účet'; return;
     }
-    // Add to names table with color
-    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password,
+      options: { data: { display_name: name } }  // store original name
+    });
+    if (error) {
+      showAuthError(error.message.includes('already registered')
+        ? 'Účet s týmto menom už existuje — prihlás sa'
+        : error.message);
+      btn.disabled = false; btn.textContent = 'Vytvoriť účet'; return;
+    }
+
+    // Add to names table with consistent color
+    const color = COLORS[state.names.length % COLORS.length];
     await sb.from('names').insert({ name, color });
+    await loadAll(); // reload so colorOf() works correctly
 
   } else {
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) {
+      // Try with exact email match
       showAuthError('Nesprávne meno alebo heslo');
       btn.disabled = false; btn.textContent = 'Prihlásiť sa'; return;
     }
   }
-
-  // Success — onAuthStateChange will handle the rest
+  // onAuthStateChange handles the rest
 }
 
 function initAuthUI() {
@@ -1513,21 +1521,18 @@ function initAuthUI() {
     document.getElementById('authSubmit').textContent = 'Prihlásiť sa';
     document.getElementById('authSubmit').disabled = false;
     switchTab('login');
+    render();
   });
 }
 
 function onUserLoggedIn(userName) {
   state.activeName = userName;
-
-  // Update user chip
   const color = colorOf(userName);
   const avatar = document.getElementById('userAvatar');
   avatar.textContent = userName.charAt(0).toUpperCase();
-  avatar.style.background = color;
+  avatar.style.background = color || '#6366f1';
   document.getElementById('userNameDisplay').textContent = userName;
-  document.getElementById('userNameDisplay').style.color = color;
-
-  // Hide auth screen, show app
+  document.getElementById('userNameDisplay').style.color = color || '#6366f1';
   document.getElementById('authScreen').style.display = 'none';
 }
 
@@ -1554,16 +1559,15 @@ function onUserLoggedIn(userName) {
     // Check existing session
     const { data: { session } } = await sb.auth.getSession();
     if (session?.user) {
-      const userName = emailToName(session.user.email);
-      onUserLoggedIn(userName);
+      const userName = getNameFromSession(session);
+      if (userName) onUserLoggedIn(userName);
     }
 
     // Listen for auth changes
     sb.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        const userName = emailToName(session.user.email);
-        onUserLoggedIn(userName);
-        render();
+        const userName = getNameFromSession(session);
+        if (userName) { onUserLoggedIn(userName); render(); }
       } else if (event === 'SIGNED_OUT') {
         state.activeName = '';
         render();
