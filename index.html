@@ -325,7 +325,18 @@
   .upcoming-cancel:hover{color:#f43f5e}
   .upcoming-empty{font-size:12px;color:var(--ink2);font-style:italic;padding:4px 0}
 
-  /* ── Auth / Login ── */
+  .viewer-banner{
+    background:#f59e0b;color:#1c1200;
+    padding:7px 16px;font-size:12px;font-weight:600;
+    display:flex;align-items:center;justify-content:space-between;
+    flex-shrink:0;gap:10px;
+  }
+  .viewer-login-btn{
+    background:#1c1200;color:#f59e0b;border:none;border-radius:6px;
+    padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;
+    white-space:nowrap;
+  }
+  .viewer-login-btn:hover{opacity:.85}
   .auth-screen{
     position:fixed;inset:0;z-index:500;
     background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;
@@ -453,8 +464,16 @@
     <div class="auth-field">
       <label>Heslo</label>
       <input type="password" id="authPassword" placeholder="Heslo…" maxlength="50" autocomplete="current-password"/>
+      <div style="font-size:11px;color:#94a3b8;margin-top:5px;line-height:1.4">
+        🔑 Zabudnuté heslo? Kontaktuj správcu pre obnovenie prístupu.
+      </div>
     </div>
     <button class="auth-btn" id="authSubmit">Prihlásiť sa</button>
+    <div style="text-align:center;margin-top:14px">
+      <button id="viewerModeBtn" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;text-decoration:underline;padding:0">
+        👁 Zobraziť obsadenosť bez prihlásenia
+      </button>
+    </div>
   </div>
 </div>
 <div class="loading-overlay" id="loadingOverlay">
@@ -483,7 +502,10 @@
     </div>
   </div>
 
-  <div class="name-bar" id="nameBar">
+  <div class="viewer-banner" id="viewerBanner" style="display:none">
+    <span>👁 Režim prehliadača — rezervácie nie sú možné</span>
+    <button class="viewer-login-btn" id="viewerLoginBtn">Prihlásiť sa</button>
+  </div>
     <div class="user-chip" id="userChip">
       <div class="user-avatar" id="userAvatar">?</div>
       <span class="user-name" id="userNameDisplay">—</span>
@@ -625,10 +647,11 @@ let state = {
   month: new Date().getMonth(),
   selectedDay: null,
   activeName: '',
+  viewerMode: false,
   names: [],
   bookings: {},
   activity: {},
-  announcements: [], // [{id, text, created_at}]
+  announcements: [],
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1283,8 +1306,9 @@ function renderFloorplan() {
     el.addEventListener('mousedown', () => { if (body) body.style.filter = 'brightness(0.78)'; });
     el.addEventListener('mouseup',   () => { if (body) body.style.filter = 'brightness(0.88) saturate(1.2)'; });
     el.addEventListener('click', () => {
+      if (state.viewerMode)   { showToast('Prihláste sa pre rezerváciu'); return; }
       if (!state.selectedDay) { showToast('Najprv vyber deň v kalendári'); return; }
-      if (!state.activeName)  { showToast('Najprv si vyber meno'); return; }
+      if (!state.activeName)  { showToast('Najprv sa prihláste'); return; }
       if (isPastDay(state.year, state.month, state.selectedDay)) {
         showToast('Minulé dni sa nedajú meniť');
         return;
@@ -1512,10 +1536,32 @@ function initAuthUI() {
   document.getElementById('authName').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('authPassword').focus();
   });
+
+  // Viewer mode — skip login
+  document.getElementById('viewerModeBtn').addEventListener('click', () => {
+    state.activeName = '';
+    state.viewerMode = true;
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('viewerBanner').style.display = 'flex';
+    document.getElementById('nameBar').style.display = 'none';
+    render();
+  });
+
+  // Back to login from viewer banner
+  document.getElementById('viewerLoginBtn').addEventListener('click', () => {
+    state.viewerMode = false;
+    document.getElementById('viewerBanner').style.display = 'none';
+    document.getElementById('nameBar').style.display = '';
+    document.getElementById('authScreen').style.display = 'flex';
+  });
+
   document.getElementById('logoutBtn').addEventListener('click', async () => {
     await sb.auth.signOut();
     state.activeName = '';
+    state.viewerMode = false;
     document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('viewerBanner').style.display = 'none';
+    document.getElementById('nameBar').style.display = '';
     document.getElementById('authName').value = '';
     document.getElementById('authPassword').value = '';
     document.getElementById('authSubmit').textContent = 'Prihlásiť sa';
