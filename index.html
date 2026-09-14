@@ -368,6 +368,8 @@
   .user-name{font-size:13px;font-weight:600;color:var(--ink)}
   .logout-btn{background:none;border:none;color:#94a3b8;cursor:pointer;font-size:18px;line-height:1;padding:0 0 0 4px;transition:color .12s}
   .logout-btn:hover{color:#f43f5e}
+  .change-pwd-btn{background:none;border:none;color:#94a3b8;cursor:pointer;font-size:15px;line-height:1;padding:0 0 0 4px;transition:color .12s}
+  .change-pwd-btn:hover{color:#6366f1}
 
   @media(max-width:768px){
     html,body{overflow:auto}
@@ -514,6 +516,7 @@
     <div class="user-chip" id="userChip">
       <div class="user-avatar" id="userAvatar">?</div>
       <span class="user-name" id="userNameDisplay">—</span>
+      <button class="change-pwd-btn" id="changePwdBtn" title="Zmeniť heslo">🔑</button>
       <button class="logout-btn" id="logoutBtn" title="Odhlásiť sa">↩</button>
     </div>
     <div class="name-pills-wrap" id="namePills" style="display:none"></div>
@@ -580,6 +583,26 @@
     <div class="modal-btns">
       <button class="btn btn-ghost" id="annModalCancel">Zavrieť</button>
       <button class="btn btn-primary" id="annModalAdd">Pridať</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change password modal -->
+<div class="modal-overlay" id="changePwdModal" style="display:none">
+  <div class="modal" style="max-width:340px">
+    <h3>🔑 Zmeniť heslo</h3>
+    <div class="auth-error" id="changePwdError"></div>
+    <div class="auth-field">
+      <label>Nové heslo</label>
+      <input type="password" id="newPwdInput" placeholder="Min. 6 znakov…" maxlength="50"/>
+    </div>
+    <div class="auth-field">
+      <label>Potvrdiť nové heslo</label>
+      <input type="password" id="newPwdConfirm" placeholder="Zopakuj heslo…" maxlength="50"/>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" id="changePwdCancel">Zrušiť</button>
+      <button class="btn btn-primary" id="changePwdSubmit">Zmeniť heslo</button>
     </div>
   </div>
 </div>
@@ -1542,7 +1565,63 @@ function initAuthUI() {
     if (e.key === 'Enter') document.getElementById('authPassword').focus();
   });
 
-  // Viewer mode — skip login
+  // Change password modal
+  const changePwdModal  = document.getElementById('changePwdModal');
+  const newPwdInput     = document.getElementById('newPwdInput');
+  const newPwdConfirm   = document.getElementById('newPwdConfirm');
+  const changePwdError  = document.getElementById('changePwdError');
+
+  function openChangePwd() {
+    changePwdModal.style.display = 'flex';
+    newPwdInput.value = '';
+    newPwdConfirm.value = '';
+    changePwdError.style.display = 'none';
+    newPwdInput.focus();
+  }
+  function closeChangePwd() {
+    changePwdModal.style.display = 'none';
+  }
+
+  document.getElementById('changePwdBtn').addEventListener('click', openChangePwd);
+  document.getElementById('changePwdCancel').addEventListener('click', closeChangePwd);
+  changePwdModal.addEventListener('click', e => { if (e.target === changePwdModal) closeChangePwd(); });
+
+  document.getElementById('changePwdSubmit').addEventListener('click', async () => {
+    const newPwd  = newPwdInput.value;
+    const confirm = newPwdConfirm.value;
+    const btn     = document.getElementById('changePwdSubmit');
+
+    changePwdError.style.display = 'none';
+
+    if (!newPwd)           { changePwdError.textContent = 'Zadaj nové heslo'; changePwdError.style.display = 'block'; return; }
+    if (newPwd.length < 6) { changePwdError.textContent = 'Heslo musí mať aspoň 6 znakov'; changePwdError.style.display = 'block'; return; }
+    if (newPwd !== confirm) { changePwdError.textContent = 'Heslá sa nezhodujú'; changePwdError.style.display = 'block'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Mením heslo…';
+
+    const { error } = await sb.auth.updateUser({ password: newPwd });
+
+    if (error) {
+      changePwdError.textContent = 'Chyba: ' + error.message;
+      changePwdError.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Zmeniť heslo';
+    } else {
+      closeChangePwd();
+      showToast('✅ Heslo úspešne zmenené');
+      btn.disabled = false;
+      btn.textContent = 'Zmeniť heslo';
+    }
+  });
+
+  // Enter key support
+  [newPwdInput, newPwdConfirm].forEach(input => {
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('changePwdSubmit').click();
+      if (e.key === 'Escape') closeChangePwd();
+    });
+  });
   document.getElementById('viewerModeBtn').addEventListener('click', () => {
     state.activeName = '';
     state.viewerMode = true;
