@@ -343,26 +343,77 @@
   .viewer-login-btn:hover{opacity:.85}
   .auth-screen{
     position:fixed;inset:0;z-index:500;
-    background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+    overflow:hidden;
+  }
+  .auth-bg{
+    position:absolute;inset:0;z-index:0;background:#050510;
+  }
+  .auth-bg img{
+    width:100%;height:100%;object-fit:cover;opacity:.9;
+  }
+  .auth-bg::after{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(ellipse at 60% 40%,rgba(99,102,241,.2) 0%,transparent 60%),
+               radial-gradient(ellipse at 20% 80%,rgba(236,72,153,.15) 0%,transparent 50%);
   }
   .auth-card{
-    background:var(--surface);border-radius:20px;padding:36px 32px;
-    width:100%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,.12);border:1px solid var(--border);
+    position:relative;z-index:1;
+    background:rgba(255,255,255,.07);
+    backdrop-filter:blur(32px) saturate(180%);
+    -webkit-backdrop-filter:blur(32px) saturate(180%);
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:26px;
+    padding:42px 38px;
+    width:100%;max-width:380px;
+    box-shadow:0 8px 60px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12);
   }
-  .auth-logo{font-size:32px;margin-bottom:4px;text-align:center}
-  .auth-title{font-size:22px;font-weight:800;color:var(--ink);text-align:center;margin-bottom:4px;letter-spacing:-.4px}
-  .auth-sub{font-size:13px;color:var(--ink2);text-align:center;margin-bottom:28px}
-  .auth-tabs{display:flex;border:1px solid var(--border);border-radius:10px;margin-bottom:24px;overflow:hidden}
-  .auth-tab{flex:1;padding:10px;border:none;background:transparent;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;transition:all .15s}
-  .auth-tab.active{background:#6366f1;color:#fff}
+  .auth-logo{font-size:34px;margin-bottom:6px;text-align:center}
+  .auth-title{font-size:28px;font-weight:800;color:#fff;text-align:center;margin-bottom:3px;letter-spacing:-.5px}
+  .auth-sub{font-size:13px;color:rgba(255,255,255,.45);text-align:center;margin-bottom:30px}
+  .auth-tabs{
+    display:flex;border:1px solid rgba(255,255,255,.12);
+    border-radius:12px;margin-bottom:22px;overflow:hidden;
+    background:rgba(255,255,255,.05);
+  }
+  .auth-tab{
+    flex:1;padding:10px;border:none;background:transparent;
+    font-size:13px;font-weight:600;color:rgba(255,255,255,.4);
+    cursor:pointer;transition:all .2s;
+  }
+  .auth-tab.active{background:rgba(255,255,255,.14);color:#fff}
   .auth-field{margin-bottom:14px}
-  .auth-field label{display:block;font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:5px;letter-spacing:.3px;text-transform:uppercase}
-  .auth-field input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:14px;outline:none;transition:border-color .15s}
-  .auth-field input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.1)}
-  .auth-btn{width:100%;padding:13px;border-radius:10px;border:none;background:#6366f1;color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;margin-top:4px}
-  .auth-btn:hover{background:#4f46e5;transform:translateY(-1px)}
-  .auth-btn:disabled{background:#cbd5e1;cursor:not-allowed;transform:none}
-  .auth-error{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:12px;color:#dc2626;margin-bottom:14px;display:none}
+  .auth-field label{
+    display:block;font-size:10px;font-weight:700;
+    color:rgba(255,255,255,.45);margin-bottom:6px;
+    letter-spacing:.6px;text-transform:uppercase;
+  }
+  .auth-field input{
+    width:100%;padding:13px 16px;border-radius:12px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.07);
+    color:#fff;font-size:15px;outline:none;transition:all .2s;
+  }
+  .auth-field input::placeholder{color:rgba(255,255,255,.3)}
+  .auth-field input:focus{
+    border-color:rgba(255,255,255,.35);
+    background:rgba(255,255,255,.11);
+    box-shadow:0 0 0 3px rgba(99,102,241,.2);
+  }
+  .auth-btn{
+    width:100%;padding:14px;border-radius:12px;border:none;
+    background:rgba(255,255,255,.9);
+    color:#0f172a;font-size:15px;font-weight:700;
+    cursor:pointer;transition:all .2s;margin-top:6px;letter-spacing:-.2px;
+  }
+  .auth-btn:hover{background:#fff;transform:translateY(-1px);box-shadow:0 4px 24px rgba(0,0,0,.35)}
+  .auth-btn:active{transform:translateY(0)}
+  .auth-btn:disabled{background:rgba(255,255,255,.2);color:rgba(255,255,255,.4);cursor:not-allowed;transform:none}
+  .auth-error{
+    background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);
+    border-radius:10px;padding:10px 14px;font-size:12px;
+    color:#fca5a5;margin-bottom:14px;display:none;
+  }
   .user-chip{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border-radius:20px;background:var(--bg);border:1px solid var(--border)}
   .user-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
   .user-name{font-size:13px;font-weight:600;color:var(--ink)}
@@ -454,6 +505,9 @@
 
 <!-- Auth screen -->
 <div class="auth-screen" id="authScreen">
+  <div class="auth-bg">
+    <img src="bg.gif" alt="" loop autoplay/>
+  </div>
   <div class="auth-card">
     <div class="auth-logo">🏢</div>
     <div class="auth-title">Kancelária animátorov</div>
@@ -470,13 +524,13 @@
     <div class="auth-field">
       <label>Heslo</label>
       <input type="password" id="authPassword" placeholder="Heslo…" maxlength="50" autocomplete="current-password"/>
-      <div style="font-size:11px;color:#94a3b8;margin-top:5px;line-height:1.4">
+      <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:5px;line-height:1.4">
         🔑 Zabudnuté heslo? Kontaktuj správcu pre obnovenie prístupu.
       </div>
     </div>
     <button class="auth-btn" id="authSubmit">Prihlásiť sa</button>
     <div style="text-align:center;margin-top:14px">
-      <button id="viewerModeBtn" style="background:none;border:none;color:#94a3b8;font-size:12px;cursor:pointer;text-decoration:underline;padding:0">
+      <button id="viewerModeBtn" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:12px;cursor:pointer;text-decoration:underline;padding:0">
         👁 Zobraziť obsadenosť bez prihlásenia
       </button>
     </div>
