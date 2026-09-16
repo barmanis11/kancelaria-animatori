@@ -1251,8 +1251,7 @@ function buildFloorplanSVG(dayBookings) {
   <rect x="460" y="430" width="158" height="20" rx="4" fill="rgba(255,255,255,0.72)"/>
   <rect x="466" y="435" width="10" height="10" rx="2" fill="none" stroke="#0f172a" stroke-width="2"/>
   <text x="482" y="445" font-size="9" fill="#374151" font-family="sans-serif" font-weight="600">A3, B1 — TB live verzia</text>
-  ${DESKS.map(d => deskRect(d, dayBookings)).join('
-')}
+  ${DESKS.map(d => deskRect(d, dayBookings)).join('')}
 </svg>`;
 }
 
