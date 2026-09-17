@@ -37,22 +37,27 @@
 
   html,body{
     height:100%;
-    background:#07071a;
     color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
     font-size:14px;line-height:1.4;
     overflow:hidden;max-width:100vw;
     transition:color .3s;
+    /* Layered gradient background — deep space + coloured glows */
+    background:
+      radial-gradient(ellipse at 12% 55%,rgba(99,102,241,.32) 0%,transparent 48%),
+      radial-gradient(ellipse at 88% 12%,rgba(168,85,247,.24) 0%,transparent 42%),
+      radial-gradient(ellipse at 52% 92%,rgba(236,72,153,.18) 0%,transparent 42%),
+      radial-gradient(ellipse at 70% 50%,rgba(14,165,233,.12) 0%,transparent 40%),
+      #07071a;
+    background-attachment:fixed;
   }
 
-
-  /* Ambient glow behind everything */
+  /* Extra shimmer layer on top of gradient */
   body::before{
     content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
     background:
-      radial-gradient(ellipse at 10% 60%,rgba(99,102,241,.25) 0%,transparent 50%),
-      radial-gradient(ellipse at 90% 15%,rgba(168,85,247,.18) 0%,transparent 45%),
-      radial-gradient(ellipse at 55% 95%,rgba(236,72,153,.14) 0%,transparent 45%);
+      radial-gradient(ellipse at 30% 20%,rgba(139,92,246,.15) 0%,transparent 45%),
+      radial-gradient(ellipse at 75% 75%,rgba(99,102,241,.12) 0%,transparent 40%);
     transition:all .3s;
   }
   [data-theme="light"] body{
@@ -70,13 +75,15 @@
   .app{
     display:flex;flex-direction:column;
     height:100vh;height:100dvh;
-    overflow:hidden;position:relative;z-index:1;
+    overflow:hidden;
+    position:relative;
+    /* No z-index — gradient bleeds through glass panels */
   }
 
   /* ── Announcements bar ── */
   .ann-bar{
-    background:rgba(5,5,20,.55);
-    backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);
+    background:rgba(5,5,20,.38);
+    backdrop-filter:blur(32px) saturate(200%);-webkit-backdrop-filter:blur(32px) saturate(200%);
     display:flex;align-items:center;flex-shrink:0;
     height:52px;position:relative;overflow:hidden;
     border-bottom:1px solid var(--border);
@@ -126,8 +133,8 @@
 
   /* ── Name bar ── */
   .name-bar{
-    background:rgba(10,10,30,.45);
-    backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+    background:rgba(8,8,28,.32);
+    backdrop-filter:blur(32px) saturate(190%);-webkit-backdrop-filter:blur(32px) saturate(190%);
     padding:8px 16px;
     display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;
     border-bottom:1px solid var(--border);
@@ -157,9 +164,9 @@
   /* ── Sidebar ── */
   .sidebar{
     width:290px;flex-shrink:0;
-    background:rgba(10,10,30,.35);
-    backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
-    border-right:1px solid var(--border);
+    background:rgba(8,8,28,.28);
+    backdrop-filter:blur(32px) saturate(190%);-webkit-backdrop-filter:blur(32px) saturate(190%);
+    border-right:1px solid rgba(255,255,255,.1);
     display:flex;flex-direction:column;overflow:hidden;min-height:0;
   }
   [data-theme="light"] .sidebar{background:rgba(255,255,255,.7)}
@@ -220,8 +227,8 @@
   /* ── Modals ── */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,10,.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;z-index:100}
   .modal{
-    background:rgba(12,12,35,.85);
-    backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);
+    background:rgba(10,10,28,.65);
+    backdrop-filter:blur(48px) saturate(200%);-webkit-backdrop-filter:blur(48px) saturate(200%);
     border:1px solid rgba(255,255,255,.14);
     border-radius:20px;padding:24px;width:320px;max-width:90vw;
     box-shadow:0 24px 60px rgba(0,0,0,.6);color:var(--ink);
@@ -291,9 +298,9 @@
   }
   .auth-card{
     position:relative;
-    background:rgba(10,10,30,.45);
-    backdrop-filter:blur(48px) saturate(200%) brightness(1.1);
-    -webkit-backdrop-filter:blur(48px) saturate(200%) brightness(1.1);
+    background:rgba(8,8,24,.38);
+    backdrop-filter:blur(56px) saturate(220%) brightness(1.15);
+    -webkit-backdrop-filter:blur(56px) saturate(220%) brightness(1.15);
     border:1px solid rgba(255,255,255,.2);
     border-top:1px solid rgba(255,255,255,.35);
     border-radius:26px;
@@ -414,8 +421,8 @@
   .chat-panel{
     position:fixed;bottom:84px;right:24px;z-index:400;
     width:320px;height:420px;
-    background:rgba(10,10,30,.85);
-    backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);
+    background:rgba(8,8,28,.55);
+    backdrop-filter:blur(40px) saturate(180%);-webkit-backdrop-filter:blur(40px) saturate(180%);
     border:1px solid rgba(255,255,255,.12);
     border-radius:18px;box-shadow:0 12px 48px rgba(0,0,0,.5);
     display:flex;flex-direction:column;overflow:hidden;
