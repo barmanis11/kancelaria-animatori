@@ -466,6 +466,19 @@
   /* ── PIN & change pwd modal ── */
   .viewer-banner .viewer-login-btn:hover{opacity:.85}
 
+  /* ── Booking modal ── */
+  .book-sub{font-size:12px;color:var(--ink2);margin:-6px 0 14px;line-height:1.5}
+  .book-seg{display:flex;gap:6px;margin-bottom:12px}
+  .book-seg button{flex:1;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--glass);color:var(--ink2);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+  .book-seg button.on{background:#6366f1;border-color:#6366f1;color:#fff}
+  .book-seg button:disabled{opacity:.35;cursor:not-allowed}
+  .book-times{display:flex;gap:10px;margin-bottom:10px}
+  .book-times label{flex:1;display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:600;color:var(--ink2)}
+  .book-times input{margin-bottom:0!important;color-scheme:dark}
+  [data-theme="light"] .book-times input{color-scheme:light}
+  .btn-danger{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#fca5a5}
+  [data-theme="light"] .btn-danger{color:#dc2626}
+
   /* ── Responsive ── */
   @media(max-width:768px){
     html,body{overflow:auto}
@@ -665,6 +678,28 @@
   </div>
 </div>
 
+<!-- Booking modal -->
+<div class="modal-overlay" id="bookModal" style="display:none">
+  <div class="modal" style="width:350px">
+    <h3 id="bookTitle"></h3>
+    <div class="book-sub" id="bookSub"></div>
+    <div class="book-seg" id="bookSeg">
+      <button type="button" data-m="full" id="bookFull" class="on">Celý deň</button>
+      <button type="button" data-m="range">Od – Do</button>
+    </div>
+    <div class="book-times" id="bookTimes" style="display:none">
+      <label>Od<input type="time" id="bookFrom" step="900"/></label>
+      <label>Do<input type="time" id="bookTo" step="900"/></label>
+    </div>
+    <div class="auth-error" id="bookError"></div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" id="bookCancel">Zavrieť</button>
+      <button class="btn btn-danger" id="bookRemove" style="display:none">Zrušiť rezerváciu</button>
+      <button class="btn btn-primary" id="bookConfirm">Rezervovať</button>
+    </div>
+  </div>
+</div>
+
 <!-- Names modal -->
 <div class="modal-overlay" id="modalOverlay" style="display:none">
   <div class="modal">
@@ -794,12 +829,7 @@ async function loadAll() {
   state.names = (names || []).map(r => ({ name: r.name, color: r.color }));
   // No auto-select — user must pick manually
 
-  state.bookings = {};
-  (bookingRows || []).forEach(r => {
-    const k = r.booking_date;
-    if (!state.bookings[k]) state.bookings[k] = {};
-    state.bookings[k][r.desk_id] = r.name;
-  });
+  state.bookings = buildBookings(bookingRows);
 
   state.activity      = actRows || {};
   state.announcements = annRows || [];
@@ -827,18 +857,8 @@ async function addAnnouncement(text) {
 async function deleteAnnouncement(id) {
   await sb.from('announcements').delete().eq('id', id);
 }
-async function upsertBooking(date, deskId, name) {
-  const { error } = await sb.from('bookings').upsert(
-    { booking_date: date, desk_id: deskId, name },
-    { onConflict: 'booking_date,desk_id' }
-  );
-  if (error) { showToast('Chyba pri rezervácii'); console.error(error); return false; }
-  await touchActivity('change');
-  return true;
-}
-
-async function deleteBooking(date, deskId) {
-  await sb.from('bookings').delete().eq('booking_date', date).eq('desk_id', deskId);
+async function deleteBooking(id) {
+  await sb.from('bookings').delete().eq('id', id);
   await touchActivity('change');
 }
 
@@ -854,12 +874,7 @@ function setupRealtime() {
   sb.channel('office-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, async () => {
       const { data: bookingRows } = await sb.from('bookings').select('*');
-      state.bookings = {};
-      (bookingRows || []).forEach(r => {
-        const k = r.booking_date;
-        if (!state.bookings[k]) state.bookings[k] = {};
-        state.bookings[k][r.desk_id] = r.name;
-      });
+      state.bookings = buildBookings(bookingRows);
       render();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'names' }, async () => {
@@ -1109,10 +1124,10 @@ function renderUpcoming() {
     const [y, m, d] = dateStr.split('-').map(Number);
     const date = new Date(y, m-1, d);
     if (date < today) return;
-    Object.entries(desks).forEach(([deskId, name]) => {
-      if (name === state.activeName) {
-        upcoming.push({ dateStr, date, deskId: Number(deskId) });
-      }
+    Object.entries(desks).forEach(([deskId, list]) => {
+      list.forEach(b => {
+        if (b.name === state.activeName) upcoming.push({ dateStr, date, deskId: Number(deskId), b });
+      });
     });
   });
 
@@ -1138,26 +1153,14 @@ function renderUpcoming() {
         <div class="upcoming-item-left">
           <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
           <span class="upcoming-item-date">${dateLabel}</span>
-          <span class="upcoming-item-desk">${desk?.label || 'Stôl'}</span>
+          <span class="upcoming-item-desk">${desk?.label || 'Stôl'}${isFull(u.b) ? '' : ' · ' + bkRange(u.b)}</span>
         </div>
-        <button class="upcoming-cancel" onclick="cancelUpcoming('${u.dateStr}',${u.deskId})" title="Zrušiť">×</button>
+        <button class="upcoming-cancel" onclick="cancelUpcoming('${u.dateStr}',${u.deskId},'${u.b.id}')" title="Zrušiť">×</button>
       </div>`;
   }).join('');
 }
 
-window.cancelUpcoming = async function(dateStr, deskId) {
-  // Optimistic
-  if (state.bookings[dateStr]) {
-    delete state.bookings[dateStr][deskId];
-    if (!Object.keys(state.bookings[dateStr]).length) delete state.bookings[dateStr];
-  }
-  renderUpcoming();
-  renderCalendar();
-  renderFloorplan();
-  renderStats();
-  await deleteBooking(dateStr, deskId);
-  showToast('Rezervácia zrušená');
-};
+window.cancelUpcoming = function(dateStr, deskId, id) { removeBooking(dateStr, deskId, id); };
 function renderCalendar() {
   const { year, month, selectedDay } = state;
   document.getElementById('calMonth').textContent = `${MONTHS[month]} ${year}`;
@@ -1182,8 +1185,8 @@ function renderCalendar() {
     const bk = state.bookings[dayKey(year, month, d)] || {};
     btn.innerHTML = `<span class="day-num">${d}</span>
       <div class="day-dots">${
-        Object.entries(bk).map(([,n]) =>
-          `<div class="day-dot" style="background:${colorOf(n)}" title="${n}"></div>`
+        Object.values(bk).flat().map(b =>
+          `<div class="day-dot" style="background:${colorOf(b.name)}" title="${b.name}"></div>`
         ).join('')
       }</div>`;
     btn.addEventListener('click', () => {
@@ -1202,7 +1205,7 @@ function renderStats() {
   names.forEach(n => personDays[n.name] = 0);
   for (let d = 1; d <= total; d++) {
     const bk = state.bookings[dayKey(year, month, d)] || {};
-    Object.values(bk).forEach(n => { if (personDays[n] !== undefined) personDays[n]++; });
+    Object.values(bk).flat().forEach(b => { if (personDays[b.name] !== undefined) personDays[b.name]++; });
   }
   const container = document.getElementById('statsRows');
   if (!names.length) {
@@ -1269,11 +1272,75 @@ function renderDayHeader() {
   }
 }
 
+// ─── Time slots ───────────────────────────────────────────────────────────────
+function fmtMin(m) { return m >= 1440 ? '24:00' : String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); }
+function isFull(b) { return b.start <= 0 && b.end >= 1440; }
+function bkRange(b) { return isFull(b) ? 'celý deň' : fmtMin(b.start) + '–' + fmtMin(b.end); }
+function parseTime(v) { if (!v) return NaN; const [h, m] = v.split(':').map(Number); const t = h*60 + m; return t >= 1439 ? 1440 : t; }
+function shortName(n, max) { return n.length > max ? n.slice(0, max-1) + '…' : n; }
+
+function buildBookings(rows) {
+  const out = {};
+  (rows || []).forEach(r => {
+    const k = r.booking_date;
+    if (!out[k]) out[k] = {};
+    if (!out[k][r.desk_id]) out[k][r.desk_id] = [];
+    out[k][r.desk_id].push({ id: r.id, name: r.name, start: r.start_min ?? 0, end: r.end_min ?? 1440 });
+  });
+  Object.values(out).forEach(d => Object.values(d).forEach(l => l.sort((a, b) => a.start - b.start)));
+  return out;
+}
+
+// Which half shows what. halves[0] = left/top, halves[1] = right/bottom
+function deskLayout(list) {
+  if (!list.length) return { mode: 'free' };
+  if (list.length >= 2) return { mode: 'split', halves: [{ b: list[0] }, { b: list[1] }] };
+  const x = list[0];
+  const early = x.start < 720;
+  if (isFull(x) || (early && x.end >= 1440) || (!early && x.start <= 0)) return { mode: 'full', a: x };
+  const gap = early ? { label: 'od ' + fmtMin(x.end), from: x.end, to: 1440 }
+                    : { label: 'do ' + fmtMin(x.start), from: 0, to: x.start };
+  return { mode: 'split', halves: early ? [{ b: x }, gap] : [gap, { b: x }] };
+}
+
+function splitOverlay(desk, lay, g) {
+  const v = g.split === 'v';
+  const hs = v ? [{x:g.x, y:g.y, w:g.w/2, h:g.h}, {x:g.x+g.w/2, y:g.y, w:g.w/2, h:g.h}]
+               : [{x:g.x, y:g.y, w:g.w, h:g.h/2}, {x:g.x, y:g.y+g.h/2, w:g.w, h:g.h/2}];
+  const max = v ? 7 : 10;
+  let out = `<clipPath id="clip${desk.id}"><rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="6"/></clipPath><g clip-path="url(#clip${desk.id})" style="pointer-events:none">`;
+  lay.halves.forEach((hf, i) => {
+    const r = hs[i], cx = r.x + r.w/2, cy = r.y + r.h/2;
+    if (hf.b) {
+      const mine = hf.b.name === state.activeName;
+      out += `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${colorOf(hf.b.name)}"/>
+        <text x="${cx}" y="${cy-1}" text-anchor="middle" font-size="10" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">${mine ? '✓ Ty' : shortName(hf.b.name, max)}</text>
+        <text x="${cx}" y="${cy+11}" text-anchor="middle" font-size="8.5" fill="rgba(255,255,255,.9)" font-family="system-ui,sans-serif">${bkRange(hf.b)}</text>`;
+    } else {
+      out += `<text x="${cx}" y="${cy-1}" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="system-ui,sans-serif">voľný</text>
+        <text x="${cx}" y="${cy+11}" text-anchor="middle" font-size="8.5" fill="#94a3b8" font-family="system-ui,sans-serif">${hf.label}</text>`;
+    }
+  });
+  out += v ? `<line x1="${g.x+g.w/2}" y1="${g.y}" x2="${g.x+g.w/2}" y2="${g.y+g.h}" stroke="rgba(15,23,42,.28)" stroke-width="1.5"/>`
+           : `<line x1="${g.x}" y1="${g.y+g.h/2}" x2="${g.x+g.w}" y2="${g.y+g.h/2}" stroke="rgba(15,23,42,.28)" stroke-width="1.5"/>`;
+  return out + '</g>';
+}
+
 // ─── Floor plan SVG ───────────────────────────────────────────────────────────
 function deskRect(desk, dayBookings) {
-  const booked  = dayBookings[desk.id];
+  const list    = dayBookings[desk.id] || [];
+  const lay     = deskLayout(list);
+  const booked  = lay.mode === 'full' ? lay.a.name : null;
   const isMine  = booked === state.activeName;
   const isFree  = !booked;
+  const portrait = desk.rotate === 90;
+  const geo     = portrait ? {x:-60, y:-29, w:68, h:100, split:'h'} : {x:-50, y:-29, w:100, h:58, split:'v'};
+  const split   = lay.mode === 'split' ? splitOverlay(desk, lay, geo) : '';
+  const extra   = (lay.mode === 'full' && !isFull(lay.a)) ? `<text x="0" y="20" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.9)" font-family="system-ui,sans-serif">${bkRange(lay.a)}</text>` : '';
+  const hitFull = '<rect x="-60" y="-49" width="120" height="118" fill="transparent" rx="6"/>';
+  const hit     = lay.mode !== 'split' ? hitFull : (portrait
+    ? '<rect data-side="0" x="-80" y="-49" width="140" height="70" fill="transparent"/><rect data-side="1" x="-80" y="21" width="140" height="54" fill="transparent"/>'
+    : '<rect data-side="0" x="-60" y="-49" width="60" height="118" fill="transparent"/><rect data-side="1" x="0" y="-49" width="60" height="118" fill="transparent"/>');
   const fill    = booked ? colorOf(booked) : '#fff';
   const flip    = desk.flip || false;
   const special = desk.special || false;
@@ -1293,15 +1360,16 @@ function deskRect(desk, dayBookings) {
         <rect class="desk-body" x="-60" y="-29" width="68" height="100" rx="6" ry="6"
           fill="${fill}" stroke="${stroke}" stroke-width="${sw}"
           style="filter:${booked?'drop-shadow(0 2px 8px rgba(0,0,0,.15))':'drop-shadow(0 1px 3px rgba(0,0,0,.06))'}"/>
+        ${split}
         <text x="-52" y="-15" font-size="11" font-weight="700"
-          fill="${booked?'rgba(255,255,255,0.65)':'#94a3b8'}" font-family="system-ui,sans-serif">${desk.label}</text>
+          fill="${booked?'rgba(255,255,255,0.65)':(lay.mode==='split'?'#334155':'#94a3b8')}" font-family="system-ui,sans-serif">${desk.label}</text>
         ${special ? `<circle cx="-2" cy="-17" r="4" fill="${booked?'rgba(255,255,255,0.5)':'#0f172a'}" opacity="0.6"/>` : ''}
         <text x="0" y="6" text-anchor="middle" font-size="${isMine?13:11}" font-weight="${isMine?700:500}"
           fill="${booked?'#fff':'#94a3b8'}" font-family="system-ui,sans-serif"
           style="text-shadow:${booked?'0 1px 2px rgba(0,0,0,.2)':'none'}">${nameText}</text>
         <text x="-25" y="26" text-anchor="middle" font-size="11"
-          fill="#94a3b8" font-family="system-ui,sans-serif">${isFree?'voľný':''}</text>
-        <rect x="-60" y="-49" width="120" height="118" fill="transparent" rx="6"/>
+          fill="#94a3b8" font-family="system-ui,sans-serif">${lay.mode==='free'?'voľný':''}</text>
+        ${extra}${hit}
       </g>`;
   }
 
@@ -1318,14 +1386,15 @@ function deskRect(desk, dayBookings) {
       <rect class="desk-body" x="${-W/2}" y="${-H/2}" width="${W}" height="${H}" rx="6" ry="6"
         fill="${fill}" stroke="${stroke}" stroke-width="${sw}"
         style="filter:${booked?'drop-shadow(0 2px 8px rgba(0,0,0,.15))':'drop-shadow(0 1px 3px rgba(0,0,0,.06))'}"/>
+      ${split}
       <text x="${-W/2+8}" y="${labelY}" font-size="11" font-weight="700"
-        fill="${booked?'rgba(255,255,255,0.65)':'#94a3b8'}" font-family="system-ui,sans-serif">${desk.label}</text>
+        fill="${booked?'rgba(255,255,255,0.65)':(lay.mode==='split'?'#334155':'#94a3b8')}" font-family="system-ui,sans-serif">${desk.label}</text>
       ${special ? `<circle cx="${W/2-10}" cy="${flip?(H/2-12):(-H/2+12)}" r="4" fill="${booked?'rgba(255,255,255,0.5)':'#0f172a'}" opacity="0.6"/>` : ''}
       <text x="0" y="6" text-anchor="middle" font-size="${isMine?13:11}" font-weight="${isMine?700:500}"
         fill="${booked?'#fff':'#94a3b8'}" font-family="system-ui,sans-serif"
         style="text-shadow:${booked?'0 1px 2px rgba(0,0,0,.2)':'none'}">${nameText}</text>
-      ${isFree ? `<text x="0" y="6" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="system-ui,sans-serif">voľný</text>` : ''}
-      <rect x="${-W/2-10}" y="${-H/2-20}" width="${W+20}" height="${H+60}" fill="transparent" rx="6"/>
+      ${lay.mode==='free' ? `<text x="0" y="6" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="system-ui,sans-serif">voľný</text>` : ''}
+      ${extra}${hit}
     </g>`;
 }
 
@@ -1391,7 +1460,7 @@ function renderFloorplan() {
     });
     el.addEventListener('mousedown', () => { if (body) body.style.filter = 'brightness(0.78)'; });
     el.addEventListener('mouseup',   () => { if (body) body.style.filter = 'brightness(0.88) saturate(1.2)'; });
-    el.addEventListener('click', () => {
+    el.addEventListener('click', (e) => {
       if (state.viewerMode)   { showToast('Prihláste sa pre rezerváciu'); return; }
       if (!state.selectedDay) { showToast('Najprv vyber deň v kalendári'); return; }
       if (!state.activeName)  { showToast('Najprv sa prihláste'); return; }
@@ -1399,47 +1468,114 @@ function renderFloorplan() {
         showToast('Minulé dni sa nedajú meniť');
         return;
       }
-      toggleDesk(Number(el.dataset.desk));
+      const sd = e.target.getAttribute('data-side');
+      openDeskModal(Number(el.dataset.desk), sd === null ? null : Number(sd));
     });
   });
 }
 
-// ─── Toggle desk ──────────────────────────────────────────────────────────────
-async function toggleDesk(deskId) {
-  const k = dayKey(state.year, state.month, state.selectedDay);
-  if (!state.bookings[k]) state.bookings[k] = {};
-  const dayBk = state.bookings[k];
+// ─── Booking modal (time slots) ───────────────────────────────────────────────
+let bookCtx = null;
+function bookErr(msg) { const el = document.getElementById('bookError'); el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+function setBookMode(mode) {
+  bookCtx.mode = mode;
+  document.querySelectorAll('#bookSeg button').forEach(b => b.classList.toggle('on', b.dataset.m === mode));
+  document.getElementById('bookTimes').style.display = mode === 'range' ? 'flex' : 'none';
+  bookErr('');
+}
+function closeBookModal() { document.getElementById('bookModal').style.display = 'none'; bookCtx = null; }
 
-  if (dayBk[deskId] === state.activeName) {
-    // ── Optimistic: remove immediately ──
-    delete dayBk[deskId];
-    if (!Object.keys(dayBk).length) delete state.bookings[k];
-    render();
-    showToast('Rezervácia zrušená');
-    // ── Persist to DB ──
-    await deleteBooking(k, deskId);
+function openDeskModal(deskId, side) {
+  const k    = dayKey(state.year, state.month, state.selectedDay);
+  const list = (state.bookings[k] || {})[deskId] || [];
+  const lay  = deskLayout(list);
+  const desk = DESKS.find(d => d.id === deskId);
+  const hit  = lay.mode === 'full' ? lay.a : (lay.mode === 'split' && side !== null ? lay.halves[side].b : null);
+  const dateLabel = `${state.selectedDay}. ${MONTHS[state.month]}`;
+  const $ = id => document.getElementById(id);
 
-  } else if (dayBk[deskId]) {
-    showToast(`Stôl je obsadený: ${dayBk[deskId]}`);
+  if (hit && hit.name !== state.activeName) { showToast(`Obsadené: ${hit.name} (${bkRange(hit)})`); return; }
 
+  bookCtx = { k, deskId, list, hit };
+  bookErr('');
+  if (hit) {   // my own booking → offer cancel
+    $('bookTitle').textContent = `Stôl ${desk.label} — tvoja rezervácia`;
+    $('bookSub').textContent = `${dateLabel} · ${bkRange(hit)}`;
+    $('bookSeg').style.display = 'none'; $('bookTimes').style.display = 'none';
+    $('bookConfirm').style.display = 'none'; $('bookRemove').style.display = '';
   } else {
-    const existing = Object.entries(dayBk).find(([,n]) => n === state.activeName);
-    if (existing) {
-      showToast(`Už máš rezervovaný stôl ${DESKS.find(d=>d.id===Number(existing[0]))?.label} — najprv ho zruš`);
-      return;
+    $('bookTitle').textContent = `Rezervovať stôl ${desk.label}`;
+    const others = list.map(b => `${b.name} ${bkRange(b)}`).join(', ');
+    $('bookSub').textContent = dateLabel + (others ? ` · už rezervované: ${others}` : '');
+    $('bookSeg').style.display = ''; $('bookConfirm').style.display = ''; $('bookRemove').style.display = 'none';
+    const gap = lay.mode === 'split' && side !== null ? lay.halves[side] : { from: 480, to: 960 };
+    let from = gap.from, to = gap.to;
+    if (lay.mode === 'split') {                      // pre-fill the free window
+      if (gap.from === 0) { to = gap.to; from = Math.max(0, to - 240); } else { to = Math.min(1440, from + 240); }
     }
-    // ── Optimistic: add immediately ──
-    dayBk[deskId] = state.activeName;
-    render();
-    showToast(`Rezervovaný stôl ${DESKS.find(d=>d.id===deskId)?.label}`);
-    // ── Persist to DB ──
-    const ok = await upsertBooking(k, deskId, state.activeName);
-    if (!ok) {
-      // Rollback on error
-      delete dayBk[deskId];
-      render();
-    }
+    $('bookFrom').value = fmtMin(Math.min(from, 1439)); $('bookTo').value = fmtMin(Math.min(to, 1439));
+    $('bookFull').disabled = list.length > 0;
+    setBookMode(list.length ? 'range' : 'full');
   }
+  $('bookModal').style.display = 'flex';
+}
+
+async function confirmBooking() {
+  const { k, deskId, list } = bookCtx;
+  const desk = DESKS.find(d => d.id === deskId);
+  const mine = Object.entries(state.bookings[k] || {}).find(([, l]) => l.some(b => b.name === state.activeName));
+  if (mine) return bookErr(`Už máš rezerváciu (stôl ${DESKS.find(d => d.id === Number(mine[0])).label}). Najprv ju zruš.`);
+  let s0 = 0, e0 = 1440;
+  if (bookCtx.mode === 'range') {
+    s0 = parseTime(document.getElementById('bookFrom').value);
+    e0 = parseTime(document.getElementById('bookTo').value);
+    if (isNaN(s0) || isNaN(e0)) return bookErr('Zadaj čas „Od“ aj „Do“.');
+    if (s0 >= e0) return bookErr('Čas „Do“ musí byť neskôr ako „Od“.');
+  }
+  const clash = list.find(b => s0 < b.end && e0 > b.start);
+  if (clash) return bookErr(`Prekrýva sa s rezerváciou ${clash.name} (${bkRange(clash)}).`);
+  if (list.length >= 2) return bookErr('Stôl už má dve rezervácie.');
+
+  const row = { id: 'tmp-' + Date.now(), name: state.activeName, start: s0, end: e0 };
+  if (!state.bookings[k]) state.bookings[k] = {};
+  state.bookings[k][deskId] = [...list, row].sort((a, b) => a.start - b.start);
+  closeBookModal(); render();
+
+  const { data, error } = await sb.from('bookings')
+    .insert({ booking_date: k, desk_id: deskId, name: row.name, start_min: s0, end_min: e0 }).select().single();
+  if (error) {
+    console.error(error);
+    if (state.bookings[k] && state.bookings[k][deskId]) {
+      state.bookings[k][deskId] = state.bookings[k][deskId].filter(b => b !== row && b.id !== row.id);
+      if (!state.bookings[k][deskId].length) delete state.bookings[k][deskId];
+    }
+    render();
+    showToast(error.code === '23P01' ? 'Tento čas medzitým niekto zarezervoval' : 'Chyba pri rezervácii');
+    return;
+  }
+  row.id = data.id;
+  playSheep();
+  showToast(`Rezervovaný stôl ${desk.label} · ${isFull(row) ? 'celý deň' : bkRange(row)}`);
+  await touchActivity('change');
+}
+
+async function removeBooking(k, deskId, id) {
+  if (String(id).startsWith('tmp-')) { showToast('Počkaj chvíľu, rezervácia sa ukladá…'); return; }
+  const l = ((state.bookings[k] || {})[deskId] || []).filter(b => String(b.id) !== String(id));
+  if (l.length) state.bookings[k][deskId] = l; else if (state.bookings[k]) delete state.bookings[k][deskId];
+  if (state.bookings[k] && !Object.keys(state.bookings[k]).length) delete state.bookings[k];
+  render(); showToast('Rezervácia zrušená');
+  await deleteBooking(id);
+}
+
+function initBookModal() {
+  const $ = id => document.getElementById(id);
+  document.querySelectorAll('#bookSeg button').forEach(b => b.addEventListener('click', () => { if (!b.disabled) setBookMode(b.dataset.m); }));
+  $('bookCancel').addEventListener('click', closeBookModal);
+  $('bookModal').addEventListener('click', e => { if (e.target === $('bookModal')) closeBookModal(); });
+  $('bookConfirm').addEventListener('click', confirmBooking);
+  $('bookRemove').addEventListener('click', () => { const c = bookCtx; closeBookModal(); removeBooking(c.k, c.deskId, c.hit.id); });
+  document.addEventListener('keydown', e => { if (!bookCtx) return; if (e.key === 'Escape') closeBookModal(); if (e.key === 'Enter' && $('bookConfirm').style.display !== 'none') confirmBooking(); });
 }
 
 // ─── Month nav ────────────────────────────────────────────────────────────────
@@ -1776,6 +1912,7 @@ function onUserLoggedIn(userName) {
   try {
     initUI();
     initChat();
+    initBookModal();
     initAuthUI();
 
     // Auto-select today
