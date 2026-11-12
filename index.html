@@ -90,18 +90,30 @@
     background:rgba(5,5,20,.38);
     backdrop-filter:blur(32px) saturate(200%);-webkit-backdrop-filter:blur(32px) saturate(200%);
     display:flex;align-items:center;flex-shrink:0;
-    height:52px;position:relative;overflow:hidden;
+    height:72px;position:relative;overflow:hidden;
     border-bottom:1px solid var(--border);
   }
   [data-theme="light"] .ann-bar{background:rgba(255,255,255,.8)}
   .ann-label{
-    flex-shrink:0;padding:0 14px 0 18px;
-    font-size:13px;font-weight:700;color:#9f1239;
+    flex-shrink:0;padding:0 18px 0 22px;
+    font-size:26px;font-weight:700;color:#9f1239;
     letter-spacing:.5px;text-transform:uppercase;
     border-right:1px solid var(--border);height:100%;
     display:flex;align-items:center;gap:6px;white-space:nowrap;
     background:transparent;z-index:2;
   }
+  .ann-icon{display:inline-block;transform-origin:50% 60%;animation:ann-vibrate 4s ease-in-out infinite}
+  @keyframes ann-vibrate{
+    0%,70%,100%{transform:rotate(0) scale(1)}
+    72%{transform:rotate(-16deg) scale(1.12)}
+    75%{transform:rotate(14deg) scale(1.12)}
+    78%{transform:rotate(-12deg) scale(1.1)}
+    81%{transform:rotate(10deg) scale(1.1)}
+    84%{transform:rotate(-7deg) scale(1.05)}
+    87%{transform:rotate(5deg) scale(1.03)}
+    90%{transform:rotate(-2deg) scale(1)}
+  }
+  @media(prefers-reduced-motion:reduce){.ann-icon{animation:none}}
   .ann-ticker-wrap{flex:1;overflow:hidden;height:100%;position:relative}
   .ann-ticker{
     display:inline-flex;align-items:center;height:100%;
@@ -115,9 +127,9 @@
   }
   .ann-ticker-item{
     display:inline-flex;align-items:center;gap:8px;
-    padding:0 32px;font-size:15px;font-weight:500;color:var(--ink);
+    padding:0 36px;font-size:21px;font-weight:600;color:var(--ink);
   }
-  .ann-ticker-item .ann-del{background:none;border:none;color:var(--ink3);cursor:pointer;font-size:16px;line-height:1;padding:0;transition:color .12s}
+  .ann-ticker-item .ann-del{background:none;border:none;color:var(--ink3);cursor:pointer;font-size:20px;line-height:1;padding:0;transition:color .12s}
   .ann-ticker-item .ann-del:hover{color:#f43f5e}
   .ann-ticker-empty{display:inline-flex;align-items:center;padding:0 40px;font-size:13px;color:var(--ink3);font-style:italic}
   .ann-actions{
@@ -483,9 +495,9 @@
   @media(max-width:768px){
     html,body{overflow:auto}
     .app{height:auto;min-height:100dvh;overflow:visible}
-    .ann-bar{height:50px}
-    .ann-label{padding:0 10px 0 12px;font-size:11px}
-    .ann-ticker-item{font-size:13px;padding:0 18px}
+    .ann-bar{height:64px}
+    .ann-label{padding:0 12px 0 14px;font-size:22px}
+    .ann-ticker-item{font-size:17px;padding:0 22px}
     .ann-actions{padding:0 8px;gap:6px}
     .ann-add-btn{padding:5px 10px;font-size:11px}
     .theme-toggle{padding:5px 8px;font-size:12px}
@@ -561,7 +573,7 @@
 <div class="app" id="app">
   <div class="ann-bar" id="annBar">
     <div class="ann-label">
-      <span>📢</span>
+      <span class="ann-icon">📢</span>
     </div>
     <div class="ann-ticker-wrap">
       <div class="ann-ticker" id="annTicker">
