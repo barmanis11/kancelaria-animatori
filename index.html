@@ -263,7 +263,7 @@
     border:1px solid rgba(255,255,255,.14);
     color:#f1f5f9;padding:10px 22px;border-radius:12px;
     font-size:13px;font-weight:600;opacity:0;transition:all .2s;
-    white-space:nowrap;z-index:200;pointer-events:none;
+    white-space:normal;max-width:90vw;text-align:center;z-index:200;pointer-events:none;
   }
   [data-theme="light"] .toast{background:rgba(15,23,42,.92);border-color:transparent}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -809,12 +809,12 @@ function formatActivityTime(iso) {
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 let toastTimer;
-function showToast(msg) {
+function showToast(msg, ms) {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+  toastTimer = setTimeout(() => el.classList.remove('show'), ms || 2400);
 }
 
 // ─── Supabase data layer ──────────────────────────────────────────────────────
@@ -1550,7 +1550,7 @@ async function confirmBooking() {
       if (!state.bookings[k][deskId].length) delete state.bookings[k][deskId];
     }
     render();
-    showToast(error.code === '23P01' ? 'Tento čas medzitým niekto zarezervoval' : 'Chyba pri rezervácii');
+    showToast(error.code === '23P01' ? 'Tento čas medzitým niekto zarezervoval' : 'Chyba pri rezervácii: ' + (error.message || error.code || 'neznáma chyba').slice(0, 110), 7000);
     return;
   }
   row.id = data.id;
