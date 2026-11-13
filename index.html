@@ -481,6 +481,52 @@
   /* ── PIN & change pwd modal ── */
   .viewer-banner .viewer-login-btn:hover{opacity:.85}
 
+  /* ── Login card: parallax tilt + edge glow ── */
+  .auth-card{
+    --rx:0deg;--ry:0deg;--nx:0;--ny:0;--mx:50%;--my:0%;
+    transform:perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+    transition:transform .7s cubic-bezier(.2,.8,.2,1),background .3s,border-color .3s;
+    will-change:transform;
+    box-shadow:
+      calc(var(--nx)*-24px) calc(var(--ny)*-24px + 8px) 70px rgba(129,140,248,.4),
+      0 8px 60px rgba(0,0,0,.5),
+      0 1px 0 rgba(255,255,255,.15) inset,
+      0 -1px 0 rgba(0,0,0,.3) inset;
+  }
+  [data-theme="light"] .auth-card{
+    box-shadow:
+      calc(var(--nx)*-24px) calc(var(--ny)*-24px + 8px) 70px rgba(99,102,241,.3),
+      0 8px 60px rgba(0,0,0,.15),
+      0 1px 0 rgba(255,255,255,.8) inset;
+  }
+  .auth-card.tilting{transition:transform .08s linear,background .3s,border-color .3s}
+  .auth-card::before{
+    content:'';position:absolute;inset:-1px;border-radius:inherit;padding:2px;pointer-events:none;
+    background:radial-gradient(300px circle at var(--mx) var(--my),rgba(199,210,254,.95),rgba(236,72,153,.45) 40%,transparent 70%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+    mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    mask-composite:exclude;
+    opacity:.35;transition:opacity .4s;
+  }
+  .auth-card.tilting::before{opacity:1}
+  /* inner layers drift slightly more than the card = depth */
+  .auth-logo,.auth-title{transform:translate(calc(var(--nx,0)*9px),calc(var(--ny,0)*6px));transition:transform .15s ease-out}
+
+  /* ── After login: card flips 180° and grows to fill the screen ── */
+  .auth-screen.flip-out{animation:screen-out .4s ease .85s forwards}
+  .auth-screen.flip-out .auth-card{animation:card-flip 1.2s cubic-bezier(.55,.05,.2,1) forwards;pointer-events:none;transition:none}
+  .auth-screen.flip-out .auth-card::before{opacity:0}
+  .auth-screen.flip-out .auth-card > *{animation:content-out .3s ease .05s forwards}
+  @keyframes content-out{to{opacity:0}}
+  @keyframes screen-out{to{opacity:0}}
+  @keyframes card-flip{
+    0%{transform:perspective(1400px) rotateY(0deg) scale(1)}
+    45%{transform:perspective(1400px) rotateY(90deg) scale(1.12)}
+    100%{transform:perspective(1400px) rotateY(180deg) scale(var(--fill-scale,6));border-radius:0}
+  }
+  @media(prefers-reduced-motion:reduce){.auth-card{transform:none!important;transition:none}}
+
   /* ── Booking modal ── */
   .book-sub{font-size:12px;color:var(--ink2);margin:-6px 0 14px;line-height:1.5}
   .book-seg{display:flex;gap:6px;margin-bottom:12px}
@@ -1784,8 +1830,35 @@ async function handleAuthSubmit() {
   // onAuthStateChange handles the rest
 }
 
+function initCardParallax() {
+  const card = document.querySelector('.auth-card');
+  if (!card || !window.matchMedia('(hover:hover)').matches) return;   // desktop/mouse only
+  let raf = null;
+  const set = (k, v) => card.style.setProperty(k, v);
+  card.addEventListener('pointermove', e => {
+    const r = card.getBoundingClientRect();
+    const nx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1));
+    const ny = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height) * 2 - 1));
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      card.classList.add('tilting');
+      set('--rx', (-ny * 9).toFixed(2) + 'deg');
+      set('--ry', (nx * 11).toFixed(2) + 'deg');
+      set('--nx', nx.toFixed(3)); set('--ny', ny.toFixed(3));
+      set('--mx', ((nx + 1) * 50).toFixed(1) + '%'); set('--my', ((ny + 1) * 50).toFixed(1) + '%');
+    });
+  });
+  card.addEventListener('pointerleave', () => {
+    cancelAnimationFrame(raf);
+    card.classList.remove('tilting');
+    set('--rx', '0deg'); set('--ry', '0deg'); set('--nx', '0'); set('--ny', '0'); set('--mx', '50%'); set('--my', '0%');
+  });
+}
+
 function initAuthUI() {
   // Auth screen theme toggle (mirrors main toggle)
+  initCardParallax();
+
   // Sound on/off (remembered in the browser)
   const soundBtn = document.getElementById('authSoundToggle');
   function paintSound() {
@@ -1925,7 +1998,15 @@ function onUserLoggedIn(userName) {
   avatar.style.background = color || '#6366f1';
   document.getElementById('userNameDisplay').textContent = userName;
   document.getElementById('userNameDisplay').style.color = color || '#6366f1';
-  document.getElementById('authScreen').style.display = 'none';
+
+  const scr = document.getElementById('authScreen');
+  if (getComputedStyle(scr).display === 'none') return;           // already inside the app
+  if (window.matchMedia('(prefers-reduced-motion:reduce)').matches) { scr.style.display = 'none'; return; }
+  const card = scr.querySelector('.auth-card');
+  card.classList.remove('tilting');
+  card.style.setProperty('--fill-scale', (Math.max(innerWidth / card.offsetWidth, innerHeight / card.offsetHeight) * 1.1).toFixed(2));
+  scr.classList.add('flip-out');
+  setTimeout(() => { scr.style.display = 'none'; scr.classList.remove('flip-out'); }, 1300);
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
