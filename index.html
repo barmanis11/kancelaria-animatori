@@ -514,15 +514,17 @@
   .auth-logo,.auth-title{transform:translate(calc(var(--nx,0)*9px),calc(var(--ny,0)*6px));transition:transform .15s ease-out}
 
   /* ── After login: card flips 180° and grows to fill the screen ── */
-  .auth-screen.flip-out{animation:screen-out .4s ease .85s forwards}
-  .auth-screen.flip-out .auth-card{animation:card-flip 1.2s cubic-bezier(.55,.05,.2,1) forwards;pointer-events:none;transition:none}
+  .auth-screen.flip-out{animation:screen-out .45s ease-in-out 1.45s forwards}
+  .auth-screen.flip-out .auth-card{animation:card-flip 1.6s linear forwards;pointer-events:none;transition:none}
   .auth-screen.flip-out .auth-card::before{opacity:0}
-  .auth-screen.flip-out .auth-card > *{animation:content-out .3s ease .05s forwards}
+  .auth-screen.flip-out .auth-card > *{animation:content-out .35s ease-in-out .5s forwards}
   @keyframes content-out{to{opacity:0}}
   @keyframes screen-out{to{opacity:0}}
+  /* 0→22%: anticipation (card shrinks) · 22→100%: flip + grow with ease-in-out
+     (slow start, fast middle, slow finish). Easing is set per phase, so each phase eases as a whole. */
   @keyframes card-flip{
-    0%{transform:perspective(1400px) rotateY(0deg) scale(1)}
-    45%{transform:perspective(1400px) rotateY(90deg) scale(1.12)}
+    0%{transform:perspective(1400px) rotateY(0deg) scale(1);border-radius:26px;animation-timing-function:cubic-bezier(.45,0,.55,1)}
+    22%{transform:perspective(1400px) rotateY(0deg) scale(.86);border-radius:26px;animation-timing-function:cubic-bezier(.65,0,.35,1)}
     100%{transform:perspective(1400px) rotateY(180deg) scale(var(--fill-scale,6));border-radius:0}
   }
   @media(prefers-reduced-motion:reduce){.auth-card{transform:none!important;transition:none}}
@@ -2006,7 +2008,7 @@ function onUserLoggedIn(userName) {
   card.classList.remove('tilting');
   card.style.setProperty('--fill-scale', (Math.max(innerWidth / card.offsetWidth, innerHeight / card.offsetHeight) * 1.1).toFixed(2));
   scr.classList.add('flip-out');
-  setTimeout(() => { scr.style.display = 'none'; scr.classList.remove('flip-out'); }, 1300);
+  setTimeout(() => { scr.style.display = 'none'; scr.classList.remove('flip-out'); }, 2050);
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
