@@ -514,19 +514,8 @@
   .auth-logo,.auth-title{transform:translate(calc(var(--nx,0)*9px),calc(var(--ny,0)*6px));transition:transform .15s ease-out}
 
   /* ── After login: card flips 180° and grows to fill the screen ── */
-  .auth-screen.flip-out{animation:screen-out .45s ease-in-out 1.45s forwards}
-  .auth-screen.flip-out .auth-card{animation:card-flip 1.6s linear forwards;pointer-events:none;transition:none}
+  .auth-screen.flip-out .auth-card{pointer-events:none;transition:none;will-change:auto}
   .auth-screen.flip-out .auth-card::before{opacity:0}
-  .auth-screen.flip-out .auth-card > *{animation:content-out .35s ease-in-out .5s forwards}
-  @keyframes content-out{to{opacity:0}}
-  @keyframes screen-out{to{opacity:0}}
-  /* 0→22%: anticipation (card shrinks) · 22→100%: flip + grow with ease-in-out
-     (slow start, fast middle, slow finish). Easing is set per phase, so each phase eases as a whole. */
-  @keyframes card-flip{
-    0%{transform:perspective(1400px) rotateY(0deg) scale(1);border-radius:26px;animation-timing-function:cubic-bezier(.45,0,.55,1)}
-    22%{transform:perspective(1400px) rotateY(0deg) scale(.86);border-radius:26px;animation-timing-function:cubic-bezier(.65,0,.35,1)}
-    100%{transform:perspective(1400px) rotateY(180deg) scale(var(--fill-scale,6));border-radius:0}
-  }
   @media(prefers-reduced-motion:reduce){.auth-card{transform:none!important;transition:none}}
 
   /* ── Booking modal ── */
@@ -2004,11 +1993,38 @@ function onUserLoggedIn(userName) {
   const scr = document.getElementById('authScreen');
   if (getComputedStyle(scr).display === 'none') return;           // already inside the app
   if (window.matchMedia('(prefers-reduced-motion:reduce)').matches) { scr.style.display = 'none'; return; }
+  if (scr.classList.contains('flip-out') || !scr.animate) { if (!scr.animate) scr.style.display = 'none'; return; }
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // close mobile keyboard first
+
   const card = scr.querySelector('.auth-card');
   card.classList.remove('tilting');
-  card.style.setProperty('--fill-scale', (Math.max(innerWidth / card.offsetWidth, innerHeight / card.offsetHeight) * 1.1).toFixed(2));
   scr.classList.add('flip-out');
-  setTimeout(() => { scr.style.display = 'none'; scr.classList.remove('flip-out'); }, 2050);
+  // Touch browsers (iOS Safari especially) drop or glitch backdrop-filter during 3D rotation → switch it off for the flip
+  const touch = window.matchMedia('(hover:none)').matches;
+  if (touch) { card.style.backdropFilter = 'none'; card.style.webkitBackdropFilter = 'none'; }
+
+  // Scale needed to cover the whole screen (measured after the keyboard closes; generous on purpose)
+  const k = Math.max(Math.max(innerWidth, screen.width) / card.offsetWidth,
+                     Math.max(innerHeight, screen.height) / card.offsetHeight) * 1.15;
+  const T = 'perspective(1400px) ';
+  const anims = [
+    // 0–22 %: anticipation (shrink) · 22–100 %: flip + grow; easing per phase = slow start, fast middle, slow end
+    card.animate([
+      { offset: 0,    transform: T + 'rotateY(0deg) scale(1)',   borderRadius: '26px', easing: 'cubic-bezier(.45,0,.55,1)' },
+      { offset: 0.22, transform: T + 'rotateY(0deg) scale(.86)', borderRadius: '26px', easing: 'cubic-bezier(.65,0,.35,1)' },
+      { offset: 1,    transform: T + 'rotateY(180deg) scale(' + k.toFixed(2) + ')', borderRadius: '0px' }
+    ], { duration: 1600, fill: 'forwards' }),
+    scr.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, delay: 1450, fill: 'forwards', easing: 'ease-in-out' })
+  ];
+  Array.from(card.children).forEach(c =>
+    anims.push(c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350, delay: 500, fill: 'forwards', easing: 'ease-in-out' })));
+
+  setTimeout(() => {
+    scr.style.display = 'none';
+    anims.forEach(a => a.cancel());
+    scr.classList.remove('flip-out');
+    card.style.backdropFilter = ''; card.style.webkitBackdropFilter = '';
+  }, 2100);
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
