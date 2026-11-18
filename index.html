@@ -638,6 +638,19 @@
   .floorplan-wrap.rv .desk-btn:nth-of-type(8){--k:8}
   @media(prefers-reduced-motion:reduce){.rv,.floorplan-wrap.rv .desk-btn{animation:none}}
 
+  /* ── Calendar heat map ── */
+  .cal-day.heat:hover{filter:brightness(1.25)}
+  .cal-day.is-today{box-shadow:inset 0 0 0 1.5px #818cf8}
+  [data-theme="light"] .cal-day.is-today{box-shadow:inset 0 0 0 1.5px #4f46e5}
+  .cal-legend{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:8px;font-size:10px;color:var(--ink3)}
+  .lg{display:block;width:16px;height:8px;border-radius:3px}
+  .lg-g{background:rgba(16,185,129,.5)} .lg-y{background:rgba(245,158,11,.55)} .lg-r{background:rgba(239,68,68,.65)}
+
+  /* ── Pulse on my booking ── */
+  .pulse-ring{fill:none;stroke:#fff;stroke-width:1.6;transform-box:fill-box;transform-origin:center;animation:pulse-ring 2.4s ease-out infinite}
+  @keyframes pulse-ring{0%{opacity:.85;transform:scale(1)}100%{opacity:0;transform:scale(1.9)}}
+  @media(prefers-reduced-motion:reduce){.pulse-ring{animation:none;opacity:0}}
+
   /* ── Booking modal ── */
   .book-sub{font-size:12px;color:var(--ink2);margin:-6px 0 14px;line-height:1.5}
   .book-seg{display:flex;gap:6px;margin-bottom:12px}
@@ -786,6 +799,7 @@
           <span>Št</span><span>Pi</span><span>So</span><span>Ne</span>
         </div>
         <div class="cal-days" id="calDays"></div>
+        <div class="cal-legend"><span>voľno</span><i class="lg lg-g"></i><i class="lg lg-y"></i><i class="lg lg-r"></i><span>plno</span></div>
       </div>
       <div class="stats-section">
         <div class="stats-title">Dni v mesiaci</div>
@@ -1363,13 +1377,15 @@ function renderCalendar() {
     if (isSel)   btn.classList.add('is-sel');
     if (dow >= 5) btn.classList.add('weekend');
 
-    const bk = state.bookings[dayKey(year, month, d)] || {};
-    btn.innerHTML = `<span class="day-num">${d}</span>
-      <div class="day-dots">${
-        Object.values(bk).flat().map(b =>
-          `<div class="day-dot" style="background:${colorOf(b.name)}" title="${b.name}"></div>`
-        ).join('')
-      }</div>`;
+    const bk  = state.bookings[dayKey(year, month, d)] || {};
+    const occ = Object.keys(bk).length;                       // desks with at least one booking
+    btn.innerHTML = `<span class="day-num">${d}</span>`;
+    if (occ > 0) {                                            // heat: green 1–2 · amber 3–5 · red 6–8 desks
+      const rgb = occ >= 6 ? '239,68,68' : occ >= 3 ? '245,158,11' : '16,185,129';
+      btn.classList.add('heat');
+      btn.style.background = `rgba(${rgb},${(0.2 + occ * 0.05).toFixed(2)})`;
+    }
+    btn.title = occ ? `${occ} z ${DESKS.length} stolov obsadených` : 'Všetky stoly voľné';
     btn.addEventListener('click', () => {
       state.selectedDay = (state.selectedDay === d) ? null : d;
       render();
@@ -1495,9 +1511,9 @@ function splitOverlay(desk, lay, g) {
     const r = hs[i], cx = r.x + r.w/2, cy = r.y + r.h/2;
     if (hf.b) {
       const mine = hf.b.name === state.activeName;
-      out += `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${colorOf(hf.b.name)}"/>
-        <text x="${cx}" y="${cy-1}" text-anchor="middle" font-size="10" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">${mine ? '✓ Ty' : shortName(hf.b.name, max)}</text>
-        <text x="${cx}" y="${cy+11}" text-anchor="middle" font-size="8.5" fill="rgba(255,255,255,.9)" font-family="system-ui,sans-serif">${bkRange(hf.b)}</text>`;
+      out += `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${colorOf(hf.b.name)}"/>` +
+        avatar(cx, cy - 5, 8, hf.b.name, 8, mine) +
+        `<text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="8.5" fill="rgba(255,255,255,.92)" font-family="system-ui,sans-serif">${bkRange(hf.b)}</text>`;
     } else {
       out += `<text x="${cx}" y="${cy-1}" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="system-ui,sans-serif">voľný</text>
         <text x="${cx}" y="${cy+11}" text-anchor="middle" font-size="8.5" fill="#94a3b8" font-family="system-ui,sans-serif">${hf.label}</text>`;
@@ -1509,6 +1525,41 @@ function splitOverlay(desk, lay, g) {
 }
 
 // ─── Floor plan SVG ───────────────────────────────────────────────────────────
+function initialsOf(name) {
+  const t = name.trim().split(/[\s._-]+/).filter(Boolean);
+  if (!t.length) return '?';
+  if (t.length > 1) return (t[0][0] + t[1][0]).toUpperCase();
+  const up = t[0].slice(1).search(/[A-ZÁČĎÉÍĹĽŇÓŔŠŤÚÝŽ]/);          // camelCase: gandalfovaMama → GM
+  return (up >= 0 ? t[0][0] + t[0][up + 1] : t[0].slice(0, 2)).toUpperCase();
+}
+
+function avatar(cx, cy, r, name, fs, mine) {
+  return `<g style="pointer-events:none">
+    ${mine ? `<circle class="pulse-ring" cx="${cx}" cy="${cy}" r="${r}"/>` : ''}
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(255,255,255,.28)" stroke="rgba(255,255,255,.9)" stroke-width="1.2"/>
+    <text x="${cx}" y="${cy + fs * 0.35}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#fff" style="font-family:var(--font-head)">${initialsOf(name)}</text>
+  </g>`;
+}
+
+function fullContent(b, mine, cx, cy) {
+  const label = mine ? '✓ Ty' : shortName(b.name, 10);
+  return avatar(cx, cy - 7, 10, b.name, 9, mine) +
+    `<text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff" font-family="system-ui,sans-serif" style="pointer-events:none">${label}</text>` +
+    (isFull(b) ? '' : `<text x="${cx}" y="${cy + 23}" text-anchor="middle" font-size="8" fill="rgba(255,255,255,.9)" font-family="system-ui,sans-serif" style="pointer-events:none">${bkRange(b)}</text>`);
+}
+
+// Top-down monitor on the far edge of the desk (opposite the chair)
+function monitorSvg(geo, portrait, flip, onColor) {
+  const c = onColor ? 'rgba(255,255,255,.42)' : '#94a3b8';
+  if (portrait) {
+    const cy = geo.y + geo.h / 2;
+    return `<g style="pointer-events:none"><rect x="2" y="${cy - 13}" width="4" height="26" rx="1.5" fill="${c}"/><rect x="-1" y="${cy - 3}" width="3" height="6" rx="1" fill="${c}"/></g>`;
+  }
+  const y = flip ? geo.y + 4 : geo.y + geo.h - 9;
+  const sy = flip ? y + 4 : y - 3;
+  return `<g style="pointer-events:none"><rect x="-14" y="${y}" width="28" height="4" rx="1.5" fill="${c}"/><rect x="-3" y="${sy}" width="6" height="3" rx="1" fill="${c}"/></g>`;
+}
+
 function deskRect(desk, dayBookings) {
   const list    = dayBookings[desk.id] || [];
   const lay     = deskLayout(list);
@@ -1518,7 +1569,9 @@ function deskRect(desk, dayBookings) {
   const portrait = desk.rotate === 90;
   const geo     = portrait ? {x:-60, y:-29, w:68, h:100, split:'h'} : {x:-50, y:-29, w:100, h:58, split:'v'};
   const split   = lay.mode === 'split' ? splitOverlay(desk, lay, geo) : '';
-  const extra   = (lay.mode === 'full' && !isFull(lay.a)) ? `<text x="0" y="20" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.9)" font-family="system-ui,sans-serif">${bkRange(lay.a)}</text>` : '';
+  const fullSvg = lay.mode === 'full' ? fullContent(lay.a, isMine, geo.x + geo.w / 2, geo.y + geo.h / 2) : '';
+  const monitor = monitorSvg(geo, portrait, desk.flip, lay.mode === 'full');
+  const extra   = '';
   const hitFull = '<rect x="-60" y="-49" width="120" height="118" fill="transparent" rx="6"/>';
   const hit     = lay.mode !== 'split' ? hitFull : (portrait
     ? '<rect data-side="0" x="-80" y="-49" width="140" height="70" fill="transparent"/><rect data-side="1" x="-80" y="21" width="140" height="54" fill="transparent"/>'
@@ -1542,13 +1595,11 @@ function deskRect(desk, dayBookings) {
         <rect class="desk-body" x="-60" y="-29" width="68" height="100" rx="6" ry="6"
           fill="${fill}" stroke="${stroke}" stroke-width="${sw}"
           style="filter:${booked?'drop-shadow(0 2px 8px rgba(0,0,0,.15))':'drop-shadow(0 1px 3px rgba(0,0,0,.06))'}"/>
-        ${split}
+        ${split}${monitor}
         <text x="-52" y="-15" font-size="11" font-weight="700"
           fill="${booked?'rgba(255,255,255,0.65)':(lay.mode==='split'?'#334155':'#94a3b8')}" font-family="system-ui,sans-serif">${desk.label}</text>
         ${special ? `<circle cx="-2" cy="-17" r="4" fill="${booked?'rgba(255,255,255,0.5)':'#0f172a'}" opacity="0.6"/>` : ''}
-        <text x="0" y="6" text-anchor="middle" font-size="${isMine?13:11}" font-weight="${isMine?700:500}"
-          fill="${booked?'#fff':'#94a3b8'}" font-family="system-ui,sans-serif"
-          style="text-shadow:${booked?'0 1px 2px rgba(0,0,0,.2)':'none'}">${nameText}</text>
+        ${fullSvg}
         <text x="-25" y="26" text-anchor="middle" font-size="11"
           fill="#94a3b8" font-family="system-ui,sans-serif">${lay.mode==='free'?'voľný':''}</text>
         ${extra}${hit}
@@ -1568,13 +1619,11 @@ function deskRect(desk, dayBookings) {
       <rect class="desk-body" x="${-W/2}" y="${-H/2}" width="${W}" height="${H}" rx="6" ry="6"
         fill="${fill}" stroke="${stroke}" stroke-width="${sw}"
         style="filter:${booked?'drop-shadow(0 2px 8px rgba(0,0,0,.15))':'drop-shadow(0 1px 3px rgba(0,0,0,.06))'}"/>
-      ${split}
+      ${split}${monitor}
       <text x="${-W/2+8}" y="${labelY}" font-size="11" font-weight="700"
         fill="${booked?'rgba(255,255,255,0.65)':(lay.mode==='split'?'#334155':'#94a3b8')}" font-family="system-ui,sans-serif">${desk.label}</text>
       ${special ? `<circle cx="${W/2-10}" cy="${flip?(H/2-12):(-H/2+12)}" r="4" fill="${booked?'rgba(255,255,255,0.5)':'#0f172a'}" opacity="0.6"/>` : ''}
-      <text x="0" y="6" text-anchor="middle" font-size="${isMine?13:11}" font-weight="${isMine?700:500}"
-        fill="${booked?'#fff':'#94a3b8'}" font-family="system-ui,sans-serif"
-        style="text-shadow:${booked?'0 1px 2px rgba(0,0,0,.2)':'none'}">${nameText}</text>
+      ${fullSvg}
       ${lay.mode==='free' ? `<text x="0" y="6" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="system-ui,sans-serif">voľný</text>` : ''}
       ${extra}${hit}
     </g>`;
