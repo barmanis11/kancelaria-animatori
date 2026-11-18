@@ -612,6 +612,32 @@
   .auth-live-dots{display:flex;gap:7px;justify-content:center;margin-top:10px}
   .live-dot{width:12px;height:12px;border-radius:50%;display:block;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);transition:background .3s}
 
+  /* ── Icon sizing ── */
+  .ico-sm{width:14px;height:14px}
+  .ico-inline{display:inline-block;vertical-align:-2px;margin-right:2px}
+  .ann-label .ico{width:30px;height:30px}
+  .chat-bubble .ico{width:24px;height:24px}
+  .chat-send .ico{width:17px;height:17px}
+  .modal h3{display:flex;align-items:center;gap:8px}
+  .change-pwd-btn,.logout-btn{display:inline-flex;align-items:center;line-height:0}
+  .user-chip .ico{width:16px;height:16px}
+  .viewer-banner span{display:inline-flex;align-items:center;gap:4px}
+
+  /* ── Staggered reveal ── */
+  .rv{animation:rv-in .6s cubic-bezier(.2,.8,.2,1) var(--rd,0s) backwards}
+  @keyframes rv-in{from{opacity:0;transform:translateY(16px)}}
+  .floorplan-wrap.rv .desk-btn{animation:desk-in .5s ease backwards;animation-delay:calc(var(--rd,0s) + .15s + var(--k,0) * .07s)}
+  @keyframes desk-in{from{opacity:0}}
+  .floorplan-wrap.rv .desk-btn:nth-of-type(1){--k:1}
+  .floorplan-wrap.rv .desk-btn:nth-of-type(2){--k:2}
+  .floorplan-wrap.rv .desk-btn:nth-of-type(3){--k:3}
+  .floorplan-wrap.rv .desk-btn:nth-of-type(4){--k:4}
+  .floorplan-wrap.rv .desk-btn:nth-of-type(5){--k:5}
+  .floorplan-wrap.rv .desk-btn:nth-of-type(6){--k:6}
+  .floorplan-wrap.rv .desk-btn:nth-of-type(7){--k:7}
+  .floorplan-wrap.rv .desk-btn:nth-of-type(8){--k:8}
+  @media(prefers-reduced-motion:reduce){.rv,.floorplan-wrap.rv .desk-btn{animation:none}}
+
   /* ── Booking modal ── */
   .book-sub{font-size:12px;color:var(--ink2);margin:-6px 0 14px;line-height:1.5}
   .book-seg{display:flex;gap:6px;margin-bottom:12px}
@@ -692,13 +718,13 @@
       <input type="password" id="authPassword" placeholder=" " maxlength="50" autocomplete="current-password"/>
       <label for="authPassword">Heslo</label>
       <div class="auth-hint">
-        🔑 Zabudnuté heslo? Kontaktuj správcu pre obnovenie prístupu.
+        <svg class="ico ico-sm ico-inline" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/></svg> Zabudnuté heslo? Kontaktuj správcu pre obnovenie prístupu.
       </div>
     </div>
     <button class="auth-btn" id="authSubmit">Prihlásiť sa</button>
     <div style="text-align:center;margin-top:14px">
       <button id="viewerModeBtn" class="auth-viewer-btn">
-        👁 Zobraziť obsadenosť bez prihlásenia
+        <svg class="ico ico-sm ico-inline" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg> Zobraziť obsadenosť bez prihlásenia
       </button>
     </div>
     <div class="auth-live" id="authLive">
@@ -715,7 +741,7 @@
 <div class="app" id="app">
   <div class="ann-bar" id="annBar">
     <div class="ann-label">
-      <span class="ann-icon">📢</span>
+      <span class="ann-icon"><svg class="ico " viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h3l8 4V6L7 10H4z"/><path d="M18 9.5a3.5 3.5 0 0 1 0 5M7 14l1.2 5h2.3l-.9-4"/></svg></span>
     </div>
     <div class="ann-ticker-wrap">
       <div class="ann-ticker" id="annTicker">
@@ -734,15 +760,15 @@
   </div>
 
   <div class="viewer-banner" id="viewerBanner" style="display:none">
-    <span>👁 Režim prehliadača — rezervácie nie sú možné</span>
+    <span><svg class="ico ico-sm ico-inline" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg> Režim prehliadača — rezervácie nie sú možné</span>
     <button class="viewer-login-btn" id="viewerLoginBtn">Prihlásiť sa</button>
   </div>
   <div class="name-bar" id="nameBar">
     <div class="user-chip" id="userChip">
       <div class="user-avatar" id="userAvatar">?</div>
       <span class="user-name" id="userNameDisplay">—</span>
-      <button class="change-pwd-btn" id="changePwdBtn" title="Zmeniť heslo">🔑</button>
-      <button class="logout-btn" id="logoutBtn" title="Odhlásiť sa">↩</button>
+      <button class="change-pwd-btn" id="changePwdBtn" title="Zmeniť heslo"><svg class="ico " viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/></svg></button>
+      <button class="logout-btn" id="logoutBtn" title="Odhlásiť sa"><svg class="ico " viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"/><path d="M16 8l4 4-4 4M20 12H9"/></svg></button>
     </div>
     <div class="name-pills-wrap" id="namePills" style="display:none"></div>
   </div>
@@ -787,7 +813,7 @@
 <!-- PIN modal -->
 <div class="modal-overlay" id="pinModalOverlay" style="display:none">
   <div class="modal" style="width:280px">
-    <h3>🔒 Admin PIN</h3>
+    <h3><svg class="ico " viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Admin PIN</h3>
     <input type="password" id="pinInputField" placeholder="Zadaj PIN…" maxlength="10"
       style="letter-spacing:4px;font-size:18px;text-align:center"/>
     <div style="font-size:11px;color:#94a3b8;text-align:center;margin-bottom:8px;margin-top:-4px">
@@ -803,7 +829,7 @@
 <!-- Announcements modal -->
 <div class="modal-overlay" id="annModalOverlay" style="display:none">
   <div class="modal">
-    <h3>📢 Nové oznámenie</h3>
+    <h3><svg class="ico " viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h3l8 4V6L7 10H4z"/><path d="M18 9.5a3.5 3.5 0 0 1 0 5M7 14l1.2 5h2.3l-.9-4"/></svg> Nové oznámenie</h3>
     <input type="text" id="annInputField" placeholder="Text oznámenia…" maxlength="120"/>
     <div class="modal-btns">
       <button class="btn btn-ghost" id="annModalCancel">Zavrieť</button>
@@ -815,7 +841,7 @@
 <!-- Change password modal -->
 <div class="modal-overlay" id="changePwdModal" style="display:none">
   <div class="modal" style="max-width:340px">
-    <h3>🔑 Zmeniť heslo</h3>
+    <h3><svg class="ico " viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/></svg> Zmeniť heslo</h3>
     <div class="auth-error" id="changePwdError"></div>
     <div class="auth-field">
       <label>Nové heslo</label>
@@ -869,13 +895,13 @@
 
 <!-- Live chat -->
 <button class="chat-bubble" id="chatBubble" title="Live chat">
-  💬
+  <svg class="ico " viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg>
   <span class="chat-badge" id="chatBadge">0</span>
 </button>
 <div class="chat-panel" id="chatPanel">
   <div class="chat-header">
     <div style="display:flex;align-items:center;gap:8px">
-      <span>💬</span> Live chat
+      <span style="display:flex"><svg class="ico " viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg></span> Live chat
       <span class="rt-dot" style="background:#10b981;margin-left:4px"></span>
     </div>
     <button class="chat-close" id="chatClose">×</button>
@@ -885,7 +911,7 @@
   </div>
   <div class="chat-input-row">
     <input class="chat-input" id="chatInput" placeholder="Napíš správu…" maxlength="300" autocomplete="off"/>
-    <button class="chat-send" id="chatSend">➤</button>
+    <button class="chat-send" id="chatSend"><svg class="ico " viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10 14M21 3l-7 18-4-8-8-4 19-6z"/></svg></button>
   </div>
 </div>
 
@@ -1401,8 +1427,8 @@ function renderDayHeader() {
 
   const actHtml = (visitStr || changeStr) ? `
     <div style="display:flex;flex-direction:column;gap:3px;margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0">
-      ${visitStr  ? `<div style="font-size:10px;color:#94a3b8;display:flex;align-items:center;gap:5px;justify-content:flex-end"><span>👁</span><span>${visitStr}</span></div>` : ''}
-      ${changeStr ? `<div style="font-size:10px;color:#94a3b8;display:flex;align-items:center;gap:5px;justify-content:flex-end"><span>✏️</span><span>${changeStr}</span></div>` : ''}
+      ${visitStr  ? `<div style="font-size:10px;color:#94a3b8;display:flex;align-items:center;gap:5px;justify-content:flex-end"><span style="display:flex">${ic('eye','ico-sm')}</span><span>${visitStr}</span></div>` : ''}
+      ${changeStr ? `<div style="font-size:10px;color:#94a3b8;display:flex;align-items:center;gap:5px;justify-content:flex-end"><span style="display:flex">${ic('pencil','ico-sm')}</span><span>${changeStr}</span></div>` : ''}
     </div>` : '';
 
   if (!selectedDay) {
@@ -1415,15 +1441,16 @@ function renderDayHeader() {
     const past = isPastDay(year, month, selectedDay);
     titleEl.textContent = `${selectedDay}. ${MONTHS[month]} ${year}`;
     subEl.innerHTML = past
-      ? `<span style="color:#f59e0b;font-weight:600">🔒 Minulý deň — rezervácie sú uzamknuté</span>`
+      ? `<span style="color:#f59e0b;font-weight:600">${ic('lock','ico-sm ico-inline')} Minulý deň — rezervácie sú uzamknuté</span>`
       : (occ > 0 ? `Obsadených ${occ} z 8 stolov` : 'Všetky stoly sú voľné — klikni na stôl pre rezerváciu');
     const pct = Math.round(occ/8*100);
     const col = occ >= 6 ? '#ef4444' : occ >= 3 ? '#f59e0b' : '#10b981';
     badgeEl.innerHTML = `<div style="text-align:right">
-      <div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:${past?'#94a3b8':col};line-height:1">${pct}%</div>
-      <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">${past ? '🔒 uzamknuté' : 'obsadenosť'}</div>
+      <div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:${past?'#94a3b8':col};line-height:1" class="pct">${pct}%</div>
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">${past ? ic('lock','ico-sm ico-inline') + ' uzamknuté' : 'obsadenosť'}</div>
       ${actHtml}
     </div>`;
+    countUp(badgeEl.querySelector('.pct'), pct);
   }
 }
 
@@ -1821,6 +1848,41 @@ function initUI() {
 }
 
 // ─── Main render ──────────────────────────────────────────────────────────────
+let shownPct = 0, pctRaf = null;
+function countUp(el, target) {
+  if (!el) return;
+  cancelAnimationFrame(pctRaf);
+  const from = shownPct;
+  if (from === target || window.matchMedia('(prefers-reduced-motion:reduce)').matches) { el.textContent = target + '%'; shownPct = target; return; }
+  el.textContent = from + '%';
+  const t0 = performance.now(), dur = 800;
+  const step = now => {
+    const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    shownPct = Math.round(from + (target - from) * e);
+    el.textContent = shownPct + '%';
+    if (k < 1) pctRaf = requestAnimationFrame(step);
+  };
+  pctRaf = requestAnimationFrame(step);
+}
+
+// Staggered fade-in of the app after login / load
+function revealApp(base) {
+  if (window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  const sel = ['.ann-bar', '.name-bar', '.sidebar .cal-nav', '.sidebar .cal-grid', '.sidebar .stats-section',
+               '.sidebar .upcoming-panel', '.day-header', '.floorplan-wrap'];
+  const els = [];
+  sel.forEach((q, i) => {
+    const el = document.querySelector(q);
+    if (!el) return;
+    el.classList.remove('rv'); void el.offsetWidth;
+    el.style.setProperty('--rd', (base + i * 0.09).toFixed(2) + 's');
+    el.classList.add('rv');
+    els.push(el);
+  });
+  setTimeout(() => { shownPct = 0; renderDayHeader(); }, (base + 6 * 0.09) * 1000);   // percentage counts up as the header appears
+  setTimeout(() => els.forEach(el => el.classList.remove('rv')), (base + sel.length * 0.09 + 1) * 1000);
+}
+
 let liveReady = false;
 function renderAuthLive() {
   const t = document.getElementById('authLiveText'), d = document.getElementById('authLiveDots');
@@ -1856,6 +1918,11 @@ function render() {
 function updateAuthLogo() {}
 
 // ─── Sheep sound ─────────────────────────────────────────────────────────────
+const ICON_PATHS = {"megaphone": "<path d=\"M4 10v4h3l8 4V6L7 10H4z\"/><path d=\"M18 9.5a3.5 3.5 0 0 1 0 5M7 14l1.2 5h2.3l-.9-4\"/>", "chat": "<path d=\"M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z\"/><path d=\"M8.5 12h.01M12 12h.01M15.5 12h.01\"/>", "key": "<circle cx=\"8\" cy=\"15\" r=\"4\"/><path d=\"M10.8 12.2 20 3M16 7l3 3M14 9l2 2\"/>", "eye": "<path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "pencil": "<path d=\"M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19l-4 1z\"/><path d=\"M14.5 6.5l3 3\"/>", "lock": "<rect x=\"5\" y=\"11\" width=\"14\" height=\"9\" rx=\"2\"/><path d=\"M8 11V8a4 4 0 0 1 8 0v3\"/>", "send": "<path d=\"M21 3 10 14M21 3l-7 18-4-8-8-4 19-6z\"/>", "logout": "<path d=\"M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4\"/><path d=\"M16 8l4 4-4 4M20 12H9\"/>", "alert": "<path d=\"M12 3 2 20h20L12 3z\"/><path d=\"M12 10v4M12 17h.01\"/>"};
+function ic(n, c, sz) {
+  return '<svg class="ico ' + (c || '') + '"' + (sz ? ' style="width:' + sz + 'px;height:' + sz + 'px"' : '') + ' viewBox="0 0 24 24" aria-hidden="true">' + ICON_PATHS[n] + '</svg>';
+}
+
 const ICONS = {
   sun:  '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
   moon: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
@@ -2086,7 +2153,7 @@ function initAuthUI() {
       btn.textContent = 'Zmeniť heslo';
     } else {
       closeChangePwd();
-      showToast('✅ Heslo úspešne zmenené');
+      showToast('Heslo úspešne zmenené');
       btn.disabled = false;
       btn.textContent = 'Zmeniť heslo';
     }
@@ -2104,6 +2171,7 @@ function initAuthUI() {
     state.viewerMode = true;
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('viewerBanner').style.display = 'flex';
+    revealApp(0.05);
     document.getElementById('nameBar').style.display = 'none';
     render();
   });
@@ -2132,8 +2200,7 @@ function initAuthUI() {
   });
 }
 
-function onUserLoggedIn(userName) {
-  playSheep();
+function onUserLoggedIn(userName, opts) {
   state.activeName = userName;
   const color = colorOf(userName);
   const avatar = document.getElementById('userAvatar');
@@ -2144,6 +2211,8 @@ function onUserLoggedIn(userName) {
 
   const scr = document.getElementById('authScreen');
   if (getComputedStyle(scr).display === 'none') return;           // already inside the app
+  if (opts && opts.instant) { scr.style.display = 'none'; revealApp(0.05); return; }   // restored session: no flip
+  playSheep();
   if (window.matchMedia('(prefers-reduced-motion:reduce)').matches) { scr.style.display = 'none'; return; }
   if (scr.classList.contains('flip-out') || !scr.animate) { if (!scr.animate) scr.style.display = 'none'; return; }
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // close mobile keyboard first
@@ -2151,6 +2220,7 @@ function onUserLoggedIn(userName) {
   const card = scr.querySelector('.auth-card');
   card.classList.remove('tilting');
   scr.classList.add('flip-out');
+  revealApp(1.3);
   // Touch browsers (iOS Safari especially) drop or glitch backdrop-filter during 3D rotation → switch it off for the flip
   const touch = window.matchMedia('(hover:none)').matches;
   if (touch) { card.style.backdropFilter = 'none'; card.style.webkitBackdropFilter = 'none'; }
@@ -2204,7 +2274,7 @@ function onUserLoggedIn(userName) {
     const { data: { session } } = await sb.auth.getSession();
     if (session?.user) {
       const userName = getNameFromSession(session);
-      if (userName) onUserLoggedIn(userName);
+      if (userName) onUserLoggedIn(userName, { instant: true });
     }
 
     // Listen for auth changes
@@ -2223,7 +2293,7 @@ function onUserLoggedIn(userName) {
     console.error('Boot error:', err);
     const ol = document.getElementById('loadingOverlay');
     ol.innerHTML = `<div style="text-align:center;padding:40px">
-      <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+      <div style="margin-bottom:12px;color:#ef4444;display:flex;justify-content:center">${ic('alert','',34)}</div>
       <div style="font-size:15px;font-weight:700;color:#ef4444;margin-bottom:8px">Chyba pripojenia k databáze</div>
       <div style="font-size:12px;color:#64748b;max-width:400px;margin:0 auto">${err?.message || err}</div>
       <button onclick="location.reload()" style="margin-top:20px;padding:10px 24px;border-radius:8px;border:none;background:#6366f1;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Skúsiť znova</button>
