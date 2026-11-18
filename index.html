@@ -651,6 +651,17 @@
   @keyframes pulse-ring{0%{opacity:.85;transform:scale(1)}100%{opacity:0;transform:scale(1.9)}}
   @media(prefers-reduced-motion:reduce){.pulse-ring{animation:none;opacity:0}}
 
+  /* ── Booking modal: day timeline ── */
+  .tl{margin:0 0 14px;padding:0 10px}
+  .tl-bar{position:relative;height:16px;border-radius:8px;background:rgba(16,185,129,.22)}
+  .tl-seg{position:absolute;top:0;bottom:0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;overflow:hidden;font-family:var(--font-head)}
+  .tl-seg.mine{box-shadow:0 0 0 1.5px #fff}
+  .tl-sel{position:absolute;top:-3px;bottom:-3px;border:2px solid #818cf8;background:rgba(99,102,241,.28);border-radius:7px;pointer-events:none;transition:left .15s,width .15s}
+  .tl-sel.bad{border-color:#f43f5e;background:rgba(244,63,94,.3)}
+  .tl-ticks{position:relative;height:14px;margin-top:6px}
+  .tl-ticks span{position:absolute;transform:translateX(-50%);font-size:9px;color:var(--ink3)}
+  .tl-free{font-size:11px;color:var(--ink2);margin-top:4px}
+
   /* ── Booking modal ── */
   .book-sub{font-size:12px;color:var(--ink2);margin:-6px 0 14px;line-height:1.5}
   .book-seg{display:flex;gap:6px;margin-bottom:12px}
@@ -877,6 +888,7 @@
   <div class="modal" style="width:350px">
     <h3 id="bookTitle"></h3>
     <div class="book-sub" id="bookSub"></div>
+    <div class="tl" id="bookTimeline"></div>
     <div class="book-seg" id="bookSeg">
       <button type="button" data-m="full" id="bookFull" class="on">Celý deň</button>
       <button type="button" data-m="range">Od – Do</button>
@@ -1713,8 +1725,49 @@ function setBookMode(mode) {
   document.querySelectorAll('#bookSeg button').forEach(b => b.classList.toggle('on', b.dataset.m === mode));
   document.getElementById('bookTimes').style.display = mode === 'range' ? 'flex' : 'none';
   bookErr('');
+  renderBookTimeline();
 }
 function closeBookModal() { document.getElementById('bookModal').style.display = 'none'; bookCtx = null; }
+
+// Day strip: occupied stretches in the colour of the person, free time tinted green, live preview of the chosen time
+function renderBookTimeline() {
+  const el = document.getElementById('bookTimeline');
+  if (!el || !bookCtx) return;
+  const list = bookCtx.list;
+  let sel = null;
+  if (!bookCtx.hit) {
+    if (bookCtx.mode === 'full') sel = { s: 0, e: 1440 };
+    else {
+      const s0 = parseTime(document.getElementById('bookFrom').value), e0 = parseTime(document.getElementById('bookTo').value);
+      if (!isNaN(s0) && !isNaN(e0) && s0 < e0) sel = { s: s0, e: e0 };
+    }
+    if (sel) sel.bad = list.some(b => sel.s < b.end && sel.e > b.start);
+  }
+  // visible window: 06:00–22:00, widened when something lies outside it
+  let a = 360, b = 1320;
+  list.forEach(x => { if (!isFull(x)) { a = Math.min(a, Math.floor(x.start / 60) * 60); b = Math.max(b, Math.ceil(x.end / 60) * 60); } });
+  if (sel && bookCtx.mode === 'range') { a = Math.min(a, Math.floor(sel.s / 60) * 60); b = Math.max(b, Math.ceil(sel.e / 60) * 60); }
+  const pos = m => ((Math.min(Math.max(m, a), b) - a) / (b - a)) * 100;
+
+  let segs = list.map(x => {
+    const l = pos(x.start), w = pos(x.end) - l, mine = x.name === state.activeName;
+    return `<div class="tl-seg${mine ? ' mine' : ''}" style="left:${l}%;width:${w}%;background:${colorOf(x.name)}" title="${x.name} · ${bkRange(x)}">${w > 14 ? initialsOf(x.name) : ''}</div>`;
+  }).join('');
+  if (sel) { const l = pos(sel.s); segs += `<div class="tl-sel${sel.bad ? ' bad' : ''}" style="left:${l}%;width:${pos(sel.e) - l}%"></div>`; }
+
+  const step = (b - a) >= 14 * 60 ? 120 : 60;
+  let ticks = '';
+  for (let m = a; m <= b; m += step) ticks += `<span style="left:${pos(m)}%">${String(Math.floor(m / 60)).padStart(2, '0')}</span>`;
+
+  let cur = 0; const gaps = [];
+  [...list].sort((x, y) => x.start - y.start).forEach(x => { if (x.start > cur) gaps.push([cur, x.start]); cur = Math.max(cur, x.end); });
+  if (cur < 1440) gaps.push([cur, 1440]);
+  const free = !list.length ? 'Voľný celý deň'
+             : gaps.length ? 'Voľné: ' + gaps.map(g => fmtMin(g[0]) + '–' + fmtMin(g[1])).join(', ')
+             : 'Stôl je celý deň obsadený';
+
+  el.innerHTML = `<div class="tl-bar">${segs}</div><div class="tl-ticks">${ticks}</div><div class="tl-free">${free}</div>`;
+}
 
 function openDeskModal(deskId, side) {
   const k    = dayKey(state.year, state.month, state.selectedDay);
@@ -1748,6 +1801,7 @@ function openDeskModal(deskId, side) {
     $('bookFull').disabled = list.length > 0;
     setBookMode(list.length ? 'range' : 'full');
   }
+  renderBookTimeline();
   $('bookModal').style.display = 'flex';
 }
 
@@ -1802,6 +1856,8 @@ async function removeBooking(k, deskId, id) {
 function initBookModal() {
   const $ = id => document.getElementById(id);
   document.querySelectorAll('#bookSeg button').forEach(b => b.addEventListener('click', () => { if (!b.disabled) setBookMode(b.dataset.m); }));
+  $('bookFrom').addEventListener('input', renderBookTimeline);
+  $('bookTo').addEventListener('input', renderBookTimeline);
   $('bookCancel').addEventListener('click', closeBookModal);
   $('bookModal').addEventListener('click', e => { if (e.target === $('bookModal')) closeBookModal(); });
   $('bookConfirm').addEventListener('click', confirmBooking);
