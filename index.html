@@ -518,6 +518,53 @@
   .auth-screen.flip-out .auth-card::before{opacity:0}
   @media(prefers-reduced-motion:reduce){.auth-card{transform:none!important;transition:none}}
 
+  /* ── Flat line icons (theme / sound buttons) ── */
+  .ico{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .auth-theme-toggle,.theme-toggle{display:inline-flex;align-items:center;justify-content:center;padding:7px 8px;line-height:0}
+
+  /* ── Login background: slowly drifting colour blobs ── */
+  .auth-bg{background:#06061a;overflow:hidden}
+  [data-theme="light"] .auth-bg{background:#e9edff}
+  .blob{position:absolute;display:block;border-radius:50%;will-change:transform;pointer-events:none}
+  .b1{width:75vmax;height:75vmax;left:-22vmax;top:-26vmax;background:radial-gradient(circle,rgba(99,102,241,.85),transparent 62%);animation:drift1 24s ease-in-out infinite alternate}
+  .b2{width:65vmax;height:65vmax;right:-20vmax;bottom:-24vmax;background:radial-gradient(circle,rgba(236,72,153,.7),transparent 62%);animation:drift2 28s ease-in-out infinite alternate}
+  .b3{width:55vmax;height:55vmax;right:-10vmax;top:-12vmax;background:radial-gradient(circle,rgba(14,165,233,.6),transparent 62%);animation:drift3 32s ease-in-out infinite alternate}
+  .b4{width:55vmax;height:55vmax;left:-14vmax;bottom:-18vmax;background:radial-gradient(circle,rgba(168,85,247,.65),transparent 62%);animation:drift4 26s ease-in-out infinite alternate}
+  [data-theme="light"] .blob{opacity:.6}
+  @keyframes drift1{to{transform:translate3d(18vmax,14vmax,0) scale(1.2)}}
+  @keyframes drift2{to{transform:translate3d(-16vmax,-12vmax,0) scale(1.15)}}
+  @keyframes drift3{to{transform:translate3d(-20vmax,16vmax,0) scale(.9)}}
+  @keyframes drift4{to{transform:translate3d(16vmax,-14vmax,0) scale(1.25)}}
+  .auth-overlay{background:rgba(4,4,18,.18)}
+  [data-theme="light"] .auth-overlay{background:rgba(240,243,255,.2)}
+  /* crisp shapes partly behind the card, so the frosted-glass blur is easy to see */
+  .orb{position:absolute;display:block;border-radius:50%;pointer-events:none;will-change:transform}
+  .o1{width:200px;height:200px;top:calc(50% - 310px);left:calc(50% + 100px);background:linear-gradient(135deg,#a5b4fc,#ec4899);animation:orb 9s ease-in-out infinite alternate}
+  .o2{width:150px;height:150px;top:calc(50% + 170px);left:calc(50% - 290px);background:linear-gradient(135deg,#22d3ee,#6366f1);animation:orb 11s ease-in-out -4s infinite alternate}
+  @keyframes orb{to{transform:translate3d(14px,-18px,0)}}
+  @media(max-width:768px){
+    .o1{width:130px;height:130px;top:calc(50% - 290px);left:calc(50% + 60px)}
+    .o2{width:110px;height:110px;top:calc(50% + 190px);left:calc(50% - 170px)}
+  }
+
+  /* ── Login logo: draws itself, then floats; squash & stretch on hover ── */
+  .auth-logo-svg{transform-origin:50% 90%;cursor:pointer}
+  .auth-logo-svg.draw .st0,.auth-logo-svg.draw .st2{animation:logo-draw 1.5s cubic-bezier(.5,0,.2,1) forwards}
+  .auth-logo-svg.draw .f,.auth-logo-svg.draw .st4{animation:logo-fill .7s ease 1.7s forwards}
+  @keyframes logo-draw{to{stroke-dashoffset:0}}
+  @keyframes logo-fill{to{opacity:1}}
+  .auth-logo-svg.float{animation:logo-float 4.5s ease-in-out infinite}
+  .auth-logo-svg.float:hover{animation:logo-float 4.5s ease-in-out infinite,logo-squash .65s ease-out}
+  @keyframes logo-float{0%,100%{translate:0 0}50%{translate:0 -6px}}
+  @keyframes logo-squash{
+    0%{transform:scale(1,1)}
+    22%{transform:scale(1.16,.82)}
+    48%{transform:scale(.9,1.16)}
+    72%{transform:scale(1.05,.96)}
+    100%{transform:scale(1,1)}
+  }
+  @media(prefers-reduced-motion:reduce){.blob,.orb,.auth-logo-svg{animation:none!important}}
+
   /* ── Booking modal ── */
   .book-sub{font-size:12px;color:var(--ink2);margin:-6px 0 14px;line-height:1.5}
   .book-seg{display:flex;gap:6px;margin-bottom:12px}
@@ -570,12 +617,13 @@
 <!-- Auth screen -->
 <div class="auth-screen" id="authScreen">
   <div class="auth-bg">
-    <img src="bg.gif" alt="" loop autoplay/>
+    <i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i><i class="blob b4"></i>
     <div class="auth-overlay"></div>
+    <i class="orb o1"></i><i class="orb o2"></i>
   </div>
   <div class="auth-card">
-    <button class="auth-theme-toggle" id="authThemeToggle" title="Prepnúť tému">☀️</button>
-    <button class="auth-theme-toggle auth-sound-toggle" id="authSoundToggle" title="Zvuk zapnutý">🔊</button>
+    <button class="auth-theme-toggle" id="authThemeToggle" title="Prepnúť tému"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
+    <button class="auth-theme-toggle auth-sound-toggle" id="authSoundToggle" title="Zvuk zapnutý"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
     <div class="auth-logo">
       <svg id="authLogo" class="auth-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="295 90 360 340" aria-hidden="true"><style>#authLogo .st0,#authLogo .st2{fill:none;stroke:currentColor;stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round}#authLogo .st1,#authLogo .st3{fill:none;stroke:currentColor;stroke-width:0;stroke-linecap:round;stroke-linejoin:round}#authLogo .st4,#authLogo .f{fill:currentColor;stroke:none}</style><path class="f" d="M335.6,419.6c-1.6,0.5-4.5,1.2-6.8,1.2c-3.8,0-7.2-1.5-9.6-4c-2.5-2.5-4-5.9-4-9.6c0-0.9,0.1-1.8,0.3-2.6l0.4-1.6l24.4-94.2 c2.6-5,5.2-8.7,7.6-10.7l144.8-143.8l88.2,86.6L437,385.9c-2,2.4-5.6,5-10.7,7.6C426.4,393.5,337.4,419.1,335.6,419.6z"/> <path class="f" d="M636.2,136.6c0.2,0.2,0.4,0.4,0.6,0.6c0.1,0.1,0.3,0.3,0.4,0.4L636.2,136.6z"/> <path class="f" d="M636.3,187.4l0.7-0.7C636.7,186.9,636.5,187.2,636.3,187.4z"/> <path class="f" d="M598.5,224.3l-87.3-87.1l37.6-37.6l0.2,0.2c6.8-6.9,15.7-10.3,24.6-10.4c8.9-0.1,17.9,3.3,24.8,10.1l0.1,0.1l37.8,37.1l1,1 c6.6,6.7,9.9,15.5,10,24.2c0.1,8.9-3.3,17.9-10.1,24.8l-0.1,0.1l-0.7,0.7L598.5,224.3z"/> <path class="f" d="M315.5,404.6c0.1-0.5,0.2-1,0.4-1.6L315.5,404.6z"/> <path class="st0" d="M335.6,419.6c-1.6,0.5-4.5,1.2-6.8,1.2"/> <path class="st0" d="M328.8,420.9c-3.8,0-7.2-1.5-9.6-4c-2.5-2.5-4-5.9-4-9.6c0-0.9,0.1-1.8,0.3-2.6"/> <path class="st0" d="M315.5,404.6c0.1-0.5,0.2-1,0.4-1.6"/> <line class="st0" x1="492.7" y1="154.5" x2="580.8" y2="241"/> <line class="st0" x1="580.8" y1="241" x2="437" y2="385.9"/> <path class="st0" d="M335.6,419.6c1.8-0.6,90.8-26.1,90.8-26.1"/> <path class="st0" d="M426.4,393.5c5-2.6,8.7-5.2,10.7-7.6"/> <line class="st0" x1="492.7" y1="154.5" x2="347.9" y2="298.2"/> <line class="st0" x1="315.5" y1="404.6" x2="315.9" y2="403.1"/> <line class="st0" x1="315.9" y1="403.1" x2="340.3" y2="308.9"/> <path class="st0" d="M340.3,308.9c2.6-5,5.2-8.7,7.6-10.7"/> <line class="st0" x1="511.2" y1="137.2" x2="598.5" y2="224.3"/> <line class="st0" x1="598.5" y1="224.3" x2="636.3" y2="187.4"/> <line class="st0" x1="636.3" y1="187.4" x2="637" y2="186.7"/> <line class="st0" x1="637" y1="186.7" x2="637" y2="186.7"/> <line class="st0" x1="511.2" y1="137.2" x2="548.7" y2="99.6"/> <line class="st1" x1="548.7" y1="99.6" x2="548.9" y2="99.8"/> <line class="st1" x1="637" y1="186.7" x2="637" y2="186.7"/> <path class="st1" d="M548.9,99.8c6.8-6.9,15.7-10.3,24.6-10.4c8.9-0.1,17.9,3.3,24.8,10.1"/> <line class="st1" x1="598.3" y1="99.4" x2="598.4" y2="99.5"/> <path class="st1" d="M636.2,136.6c0.2,0.2,0.4,0.4,0.6,0.6c0.1,0.1,0.3,0.3,0.4,0.4"/> <path class="st1" d="M637.2,137.6c6.6,6.7,9.9,15.5,10,24.2c0.1,8.9-3.3,17.9-10.1,24.8l-0.1,0.1"/> <path class="st1" d="M637,186.7c-0.2,0.2-0.5,0.5-0.7,0.7"/> <line class="st1" x1="598.3" y1="99.4" x2="598.4" y2="99.5"/> <line class="st1" x1="598.4" y1="99.5" x2="636.2" y2="136.6"/> <line class="st1" x1="636.2" y1="136.6" x2="637.2" y2="137.6"/> <line class="st2" x1="380.2" y1="232.8" x2="436.9" y2="176.7"/> <line class="st3" x1="436.9" y1="176.7" x2="380.2" y2="232.8"/> <path class="st4" d="M647.4,380.7c0.7,0.1,1.5,0.1,2.3,0.2c4.2,0.6,8,2.5,10.8,5.4c3.4,3.4,5.5,8.1,5.5,13.4c0,5.2-2.1,9.9-5.5,13.4 s-8.1,5.5-13.4,5.5L545,418.8c-23.1,0.3-49.8-19.2-62-43.4l94.8-95.6c28.4,17.7,47.3,44.6,44.7,69 C620.4,368.1,628.9,378.9,647.4,380.7z"/> <path class="st4" d="M649.7,380.9c-0.8,0-1.5-0.1-2.3-0.2C648.1,380.7,648.9,380.8,649.7,380.9z"/> <path class="st4" d="M436.9,176.7l-56.7,56.1l-74.9-75.2c-5.9-6.9-9.5-15.9-9.5-25.7c0-10.9,4.4-20.8,11.6-28 c7.2-7.2,17.1-11.6,28-11.6c9.3,0,17.8,3.2,24.6,8.6l6,5.9L436.9,176.7z"/> <path class="st2" d="M647.4,380.7c0.8,0,1.5,0.1,2.3,0.2"/> <path class="st2" d="M649.7,380.9c4.2,0.6,8,2.5,10.8,5.4c3.4,3.4,5.5,8.1,5.5,13.4c0,5.2-2.1,9.9-5.5,13.4s-8.1,5.5-13.4,5.5"/> <path class="st2" d="M305.3,157.6c-5.9-6.9-9.5-15.9-9.5-25.7c0-10.9,4.4-20.8,11.6-28c7.2-7.2,17.1-11.6,28-11.6 c9.3,0,17.8,3.2,24.6,8.6"/> <path class="st2" d="M360,100.9c1.2,0.9,5.2,4.9,6,5.9"/> <line class="st2" x1="305.3" y1="157.6" x2="380.2" y2="232.8"/> <line class="st2" x1="436.9" y1="176.7" x2="366" y2="106.8"/> <line class="st2" x1="366" y1="106.8" x2="360" y2="100.9"/> <path class="st2" d="M649.7,380.9c-0.8,0-1.5-0.1-2.3-0.2"/> <path class="st2" d="M647.4,380.7c-18.5-1.8-27-12.6-24.9-31.9"/> <path class="st2" d="M622.4,348.8c2.6-24.4-16.3-51.3-44.7-69"/> <path class="st2" d="M483,375.4c12.2,24.2,38.9,43.6,62,43.4"/> <line class="st2" x1="545" y1="418.8" x2="647.1" y2="418.5"/> <line class="st3" x1="483" y1="375.4" x2="577.8" y2="279.8"/></svg>
     </div>
@@ -626,7 +674,7 @@
         <span class="rt-dot" id="rtDot" style="background:#94a3b8"></span>
         <span id="rtStatus">Pripájam…</span>
       </div>
-      <button class="theme-toggle" id="themeToggle" title="Prepnúť tému">🌙</button>
+      <button class="theme-toggle" id="themeToggle" title="Prepnúť tému"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
       <button class="ann-add-btn" id="annAddBtn">+</button>
     </div>
   </div>
@@ -1699,10 +1747,10 @@ function initUI() {
   const themeBtn = document.getElementById('themeToggle');
   function applyTheme(light) {
     document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
-    themeBtn.textContent = light ? '🌙' : '☀️';
+    themeBtn.innerHTML = light ? ICONS.moon : ICONS.sun;
     localStorage.setItem('theme', light ? 'light' : 'dark');
     const authBtn = document.getElementById('authThemeToggle');
-    if (authBtn) authBtn.textContent = light ? '🌙' : '☀️';
+    if (authBtn) authBtn.innerHTML = light ? ICONS.moon : ICONS.sun;
     updateAuthLogo();
   }
   const savedTheme = localStorage.getItem('theme');
@@ -1732,6 +1780,13 @@ function render() {
 function updateAuthLogo() {}
 
 // ─── Sheep sound ─────────────────────────────────────────────────────────────
+const ICONS = {
+  sun:  '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
+  moon: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+  volOn:  '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+  volOff: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>'
+};
+
 function playSheep() {
   if (localStorage.getItem('sound') === 'off') return;
   try {
@@ -1821,6 +1876,23 @@ async function handleAuthSubmit() {
   // onAuthStateChange handles the rest
 }
 
+function playLogoDraw() {
+  const svg = document.getElementById('authLogo');
+  if (!svg) return;
+  svg.classList.remove('draw', 'float');
+  if (window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;   // just show it
+  svg.querySelectorAll('.st0,.st2').forEach((el, i) => {
+    let L = 0; try { L = el.getTotalLength(); } catch (e) {}
+    L = L || 400;
+    el.style.strokeDasharray = L; el.style.strokeDashoffset = L;
+    el.style.animationDelay = Math.min(i * 0.05, 0.9) + 's';
+  });
+  svg.querySelectorAll('.f,.st4').forEach(el => { el.style.opacity = 0; });   // filled parts fade in after the outline
+  void svg.getBoundingClientRect();                                           // restart animation
+  svg.classList.add('draw');
+  setTimeout(() => svg.classList.add('float'), 3000);
+}
+
 function initCardParallax() {
   const card = document.querySelector('.auth-card');
   if (!card || !window.matchMedia('(hover:hover)').matches) return;   // desktop/mouse only
@@ -1849,12 +1921,13 @@ function initCardParallax() {
 function initAuthUI() {
   // Auth screen theme toggle (mirrors main toggle)
   initCardParallax();
+  playLogoDraw();
 
   // Sound on/off (remembered in the browser)
   const soundBtn = document.getElementById('authSoundToggle');
   function paintSound() {
     const on = localStorage.getItem('sound') !== 'off';
-    soundBtn.textContent = on ? '🔊' : '🔇';
+    soundBtn.innerHTML = on ? ICONS.volOn : ICONS.volOff;
     soundBtn.title = on ? 'Zvuk zapnutý — kliknutím vypneš' : 'Zvuk vypnutý — kliknutím zapneš';
   }
   paintSound();
@@ -1871,13 +1944,13 @@ function initAuthUI() {
       if (isLight) {
         document.documentElement.setAttribute('data-theme','dark');
         localStorage.setItem('theme','dark');
-        authThemeBtn.textContent = '☀️';
-        if(mainBtn) mainBtn.textContent = '☀️';
+        authThemeBtn.innerHTML = ICONS.sun;
+        if(mainBtn) mainBtn.innerHTML = ICONS.sun;
       } else {
         document.documentElement.setAttribute('data-theme','light');
         localStorage.setItem('theme','light');
-        authThemeBtn.textContent = '🌙';
-        if(mainBtn) mainBtn.textContent = '🌙';
+        authThemeBtn.innerHTML = ICONS.moon;
+        if(mainBtn) mainBtn.innerHTML = ICONS.moon;
       }
     });
   }
@@ -1961,14 +2034,14 @@ function initAuthUI() {
     state.viewerMode = false;
     document.getElementById('viewerBanner').style.display = 'none';
     document.getElementById('nameBar').style.display = '';
-    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('authScreen').style.display = 'flex'; playLogoDraw();
   });
 
   document.getElementById('logoutBtn').addEventListener('click', async () => {
     await sb.auth.signOut();
     state.activeName = '';
     state.viewerMode = false;
-    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('authScreen').style.display = 'flex'; playLogoDraw();
     document.getElementById('viewerBanner').style.display = 'none';
     document.getElementById('nameBar').style.display = '';
     document.getElementById('authName').value = '';
