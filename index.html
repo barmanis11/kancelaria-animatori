@@ -662,6 +662,15 @@
   .tl-ticks span{position:absolute;transform:translateX(-50%);font-size:9px;color:var(--ink3)}
   .tl-free{font-size:11px;color:var(--ink2);margin-top:4px}
 
+  /* ── Sheep run ── */
+  .sheep-run{position:fixed;left:0;bottom:12px;width:120px;height:80px;z-index:450;pointer-events:none;will-change:transform}
+  .sheep-run svg{width:100%;height:100%;overflow:visible;animation:sheep-bob .3s ease-in-out infinite alternate}
+  .sheep-run .leg{transform-box:fill-box;transform-origin:50% 0;animation:leg-a .3s ease-in-out infinite alternate}
+  .sheep-run .leg.b{animation-name:leg-b}
+  @keyframes sheep-bob{to{transform:translateY(-9px) rotate(-3deg)}}
+  @keyframes leg-a{from{transform:rotate(-30deg)}to{transform:rotate(30deg)}}
+  @keyframes leg-b{from{transform:rotate(30deg)}to{transform:rotate(-30deg)}}
+
   /* ── Booking modal ── */
   .book-sub{font-size:12px;color:var(--ink2);margin:-6px 0 14px;line-height:1.5}
   .book-seg{display:flex;gap:6px;margin-bottom:12px}
@@ -1599,7 +1608,7 @@ function deskRect(desk, dayBookings) {
 
   if (rot === 90) {
     return `
-      <g class="desk-btn" data-desk="${desk.id}" transform="translate(${desk.svgX},${desk.svgY})">
+      <g class="desk-btn" data-desk="${desk.id}" transform="translate(${desk.svgX},${desk.svgY})"><g class="desk-inner">
         ${special ? `<rect x="-64" y="-33" width="76" rx="9" fill="none" stroke="#0f172a" stroke-width="2.5" height="108"/>` : ''}
         <ellipse cx="-75" cy="20" rx="10" ry="14"
           fill="${isFree?'#e2e8f0':fill}" fill-opacity="${isFree?1:0.55}"
@@ -1614,7 +1623,7 @@ function deskRect(desk, dayBookings) {
         ${fullSvg}
         <text x="-25" y="26" text-anchor="middle" font-size="11"
           fill="#94a3b8" font-family="system-ui,sans-serif">${lay.mode==='free'?'voľný':''}</text>
-        ${extra}${hit}
+        ${extra}${hit}</g>
       </g>`;
   }
 
@@ -1623,7 +1632,7 @@ function deskRect(desk, dayBookings) {
   const labelY  = flip ? (H/2 - 6)  : (-H/2 + 14);
 
   return `
-    <g class="desk-btn" data-desk="${desk.id}" transform="translate(${desk.svgX},${desk.svgY})">
+    <g class="desk-btn" data-desk="${desk.id}" transform="translate(${desk.svgX},${desk.svgY})"><g class="desk-inner">
       ${special ? `<rect x="${-W/2-4}" y="${-H/2-4}" width="${W+8}" height="${H+8}" rx="9" fill="none" stroke="#0f172a" stroke-width="2.5"/>` : ''}
       <ellipse cx="0" cy="${chairCY}" rx="14" ry="10"
         fill="${isFree?'#e2e8f0':fill}" fill-opacity="${isFree?1:0.55}"
@@ -1637,7 +1646,7 @@ function deskRect(desk, dayBookings) {
       ${special ? `<circle cx="${W/2-10}" cy="${flip?(H/2-12):(-H/2+12)}" r="4" fill="${booked?'rgba(255,255,255,0.5)':'#0f172a'}" opacity="0.6"/>` : ''}
       ${fullSvg}
       ${lay.mode==='free' ? `<text x="0" y="6" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="system-ui,sans-serif">voľný</text>` : ''}
-      ${extra}${hit}
+      ${extra}${hit}</g>
     </g>`;
 }
 
@@ -1840,6 +1849,7 @@ async function confirmBooking() {
   }
   row.id = data.id;
   playSheep();
+  celebrate(deskId);
   showToast(`Rezervovaný stôl ${desk.label} · ${isFull(row) ? 'celý deň' : bkRange(row)}`);
   await touchActivity('change');
 }
@@ -1953,6 +1963,62 @@ function initUI() {
 }
 
 // ─── Main render ──────────────────────────────────────────────────────────────
+// ─── Celebration after a booking: the desk hops, a sheep runs across the screen ───
+const SHEEP_SVG = (() => {
+  const puffs = [[44,42,15],[60,36,17],[78,40,15],[56,50,13],[72,50,12],[34,50,10],[24,45,6]];
+  const rim  = puffs.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r + 1.6}"/>`).join('');
+  const wool = puffs.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('');
+  return `<svg viewBox="0 0 120 80" aria-hidden="true">
+    <ellipse cx="58" cy="77" rx="34" ry="3.5" fill="rgba(0,0,0,.18)"/>
+    <g stroke="#334155" stroke-width="5" stroke-linecap="round">
+      <line class="leg" x1="40" y1="52" x2="40" y2="70"/><line class="leg b" x1="52" y1="52" x2="52" y2="70"/>
+      <line class="leg b" x1="76" y1="52" x2="76" y2="70"/><line class="leg" x1="88" y1="52" x2="88" y2="70"/>
+    </g>
+    <g fill="#cbd5e1">${rim}</g><g fill="#f8fafc">${wool}</g>
+    <ellipse cx="101" cy="42" rx="10" ry="12" fill="#334155" transform="rotate(12 101 42)"/>
+    <circle cx="97" cy="30" r="7" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+    <ellipse cx="91" cy="37" rx="5" ry="2.6" fill="#475569" transform="rotate(-25 91 37)"/>
+    <circle cx="105" cy="39" r="2.1" fill="#fff"/><circle cx="105.7" cy="39" r="1" fill="#0f172a"/>
+  </svg>`;
+})();
+
+function runSheep() {
+  if (window.matchMedia('(prefers-reduced-motion:reduce)').matches || !document.body.animate) return;
+  const el = document.createElement('div');
+  el.className = 'sheep-run';
+  el.innerHTML = SHEEP_SVG;
+  document.body.appendChild(el);
+  const w = window.innerWidth;
+  const a = el.animate([{ transform: 'translateX(-160px)' }, { transform: `translateX(${w + 40}px)` }],
+                       { duration: Math.max(1800, (w + 200) / 0.62), easing: 'linear' });
+  a.onfinish = () => el.remove();
+}
+
+let celebrate_ = null;                       // { deskId, t0 }
+const HOP_MS = 900;
+function applyCelebration() {
+  if (!celebrate_) return;
+  const elapsed = performance.now() - celebrate_.t0;
+  if (elapsed > HOP_MS) { celebrate_ = null; return; }
+  const inner = document.querySelector(`.desk-btn[data-desk="${celebrate_.deskId}"] .desk-inner`);
+  if (!inner || !inner.animate) return;
+  // negative delay keeps the hop continuous if the floor plan is re-rendered mid-animation
+  inner.animate([
+    { transform: 'translateY(0) scale(1,1)' },
+    { transform: 'translateY(0) scale(1.08,.9)',    offset: .2 },
+    { transform: 'translateY(-14px) scale(.96,1.08)', offset: .45 },
+    { transform: 'translateY(0) scale(1.06,.93)',   offset: .7 },
+    { transform: 'translateY(-4px) scale(1,1)',     offset: .85 },
+    { transform: 'translateY(0) scale(1,1)' }
+  ], { duration: HOP_MS, delay: -elapsed, easing: 'ease-out' });
+}
+function celebrate(deskId) {
+  if (window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  celebrate_ = { deskId, t0: performance.now() };
+  applyCelebration();
+  runSheep();
+}
+
 let shownPct = 0, pctRaf = null;
 function countUp(el, target) {
   if (!el) return;
@@ -2017,6 +2083,7 @@ function render() {
   renderDayHeader();
   renderAnnouncements();
   renderUpcoming();
+  applyCelebration();
 }
 
 // ─── Logo assets ─────────────────────────────────────────────────────────────
