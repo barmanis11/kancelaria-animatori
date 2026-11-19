@@ -539,13 +539,9 @@
   [data-theme="light"] .auth-overlay{background:rgba(240,243,255,.2)}
   /* crisp shapes partly behind the card, so the frosted-glass blur is easy to see */
   .orb{position:absolute;display:block;border-radius:50%;pointer-events:none;will-change:transform}
-  .o1{width:200px;height:200px;top:calc(50% - 310px);left:calc(50% + 100px);background:linear-gradient(135deg,#a5b4fc,#ec4899);animation:orb 9s ease-in-out infinite alternate}
-  .o2{width:150px;height:150px;top:calc(50% + 170px);left:calc(50% - 290px);background:linear-gradient(135deg,#22d3ee,#6366f1);animation:orb 11s ease-in-out -4s infinite alternate}
+  .o1{width:200px;height:200px;top:10px;right:-110px;background:linear-gradient(135deg,#a5b4fc,#ec4899);animation:orb 9s ease-in-out infinite alternate}
+  .o2{width:150px;height:150px;bottom:0;left:-100px;background:linear-gradient(135deg,#22d3ee,#6366f1);animation:orb 11s ease-in-out -4s infinite alternate}
   @keyframes orb{to{transform:translate3d(14px,-18px,0)}}
-  @media(max-width:768px){
-    .o1{width:130px;height:130px;top:calc(50% - 290px);left:calc(50% + 60px)}
-    .o2{width:110px;height:110px;top:calc(50% + 190px);left:calc(50% - 170px)}
-  }
 
   /* ── Login logo: draws itself, then floats; squash & stretch on hover ── */
   .auth-logo-svg{transform-origin:50% 90%;cursor:pointer}
@@ -667,6 +663,8 @@
   .burst-p,.burst-ring{position:absolute;display:block}
   .burst-ring{width:60px;height:60px;border:3px solid;border-radius:50%}
 
+  .auth-stage{position:relative;width:100%;max-width:380px}
+
   /* ── Booking modal ── */
   .book-sub{font-size:12px;color:var(--ink2);margin:-6px 0 14px;line-height:1.5}
   .book-seg{display:flex;gap:6px;margin-bottom:12px}
@@ -703,7 +701,7 @@
     .stat-row{margin-bottom:0;min-width:80px}
     .main{flex:none;width:100%;padding:12px;gap:10px;overflow:visible}
     .day-title{font-size:15px}
-    .floorplan-wrap{width:100%;min-height:280px;align-items:flex-start}
+    .floorplan-wrap{width:calc(100% + 24px);margin:0 -12px;min-height:280px;align-items:flex-start}
     .floorplan-svg{width:100%;height:auto}
     .chat-bubble{bottom:16px;right:16px;width:44px;height:44px;font-size:20px}
     .chat-panel{width:calc(100vw - 32px);right:16px;bottom:72px;height:350px;max-height:58vh}
@@ -711,6 +709,22 @@
   }
   @media(max-width:400px){
     .ann-label{display:none}
+  }
+  @media(max-width:768px){
+    .auth-screen{padding:14px}
+    .auth-card{padding:22px 20px}
+    .auth-logo-svg{width:46px;height:44px;margin-bottom:0}
+    .auth-title{font-size:22px}
+    .auth-sub{margin-bottom:14px}
+    .auth-tabs{margin-bottom:12px}
+    .auth-field{margin-bottom:9px}
+    .auth-live{margin-top:12px;padding-top:10px}
+    .o1{width:140px;height:140px;top:-78px;right:8px}
+    .o2{width:120px;height:120px;bottom:-68px;left:6px}
+  }
+  @media(max-width:768px) and (max-height:730px){
+    .auth-sub{display:none}
+    .auth-hint{display:none}
   }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -724,8 +738,8 @@
   <div class="auth-bg">
     <i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i><i class="blob b4"></i>
     <div class="auth-overlay"></div>
-    <i class="orb o1"></i><i class="orb o2"></i>
-  </div>
+    </div>
+  <div class="auth-stage"><i class="orb o1"></i><i class="orb o2"></i>
   <div class="auth-card">
     <button class="auth-theme-toggle" id="authThemeToggle" title="Prepnúť tému"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
     <button class="auth-theme-toggle auth-sound-toggle" id="authSoundToggle" title="Zvuk zapnutý"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
@@ -760,6 +774,7 @@
       <div class="auth-live-text" id="authLiveText"><span class="live-pulse"></span>Dnes · načítavam…</div>
       <div class="auth-live-dots" id="authLiveDots"></div>
     </div>
+  </div>
   </div>
 </div>
 <div class="loading-overlay" id="loadingOverlay">
@@ -1660,8 +1675,12 @@ function deskRect(desk, dayBookings) {
     </g>`;
 }
 
+const MOBILE_MQ = window.matchMedia('(max-width:768px)');
+function floorViewBox() { return MOBILE_MQ.matches ? '190 55 450 400' : '0 0 660 500'; }   // phones: zoom on the desks
+if (MOBILE_MQ.addEventListener) MOBILE_MQ.addEventListener('change', () => renderFloorplan());
+
 function buildFloorplanSVG(dayBookings) {
-  return `<svg class="floorplan-svg" viewBox="0 0 660 500" xmlns="http://www.w3.org/2000/svg">
+  return `<svg class="floorplan-svg" viewBox="${floorViewBox()}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <pattern id="floorTile" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
       <rect width="40" height="40" fill="#e8e4d8"/>
