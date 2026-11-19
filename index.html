@@ -662,14 +662,10 @@
   .tl-ticks span{position:absolute;transform:translateX(-50%);font-size:9px;color:var(--ink3)}
   .tl-free{font-size:11px;color:var(--ink2);margin-top:4px}
 
-  /* ── Sheep run ── */
-  .sheep-run{position:fixed;left:0;bottom:12px;width:120px;height:80px;z-index:450;pointer-events:none;will-change:transform}
-  .sheep-run svg{width:100%;height:100%;overflow:visible;animation:sheep-bob .3s ease-in-out infinite alternate}
-  .sheep-run .leg{transform-box:fill-box;transform-origin:50% 0;animation:leg-a .3s ease-in-out infinite alternate}
-  .sheep-run .leg.b{animation-name:leg-b}
-  @keyframes sheep-bob{to{transform:translateY(-9px) rotate(-3deg)}}
-  @keyframes leg-a{from{transform:rotate(-30deg)}to{transform:rotate(30deg)}}
-  @keyframes leg-b{from{transform:rotate(30deg)}to{transform:rotate(-30deg)}}
+  /* ── Booking celebration ── */
+  .burst{position:fixed;inset:0;pointer-events:none;z-index:450;overflow:hidden}
+  .burst-p,.burst-ring{position:absolute;display:block}
+  .burst-ring{width:60px;height:60px;border:3px solid;border-radius:50%}
 
   /* ── Booking modal ── */
   .book-sub{font-size:12px;color:var(--ink2);margin:-6px 0 14px;line-height:1.5}
@@ -1399,14 +1395,14 @@ function renderCalendar() {
     if (dow >= 5) btn.classList.add('weekend');
 
     const bk  = state.bookings[dayKey(year, month, d)] || {};
-    const occ = Object.keys(bk).length;                       // desks with at least one booking
+    const load = dayLoad(bk);
     btn.innerHTML = `<span class="day-num">${d}</span>`;
-    if (occ > 0) {                                            // heat: green 1–2 · amber 3–5 · red 6–8 desks
-      const rgb = occ >= 6 ? '239,68,68' : occ >= 3 ? '245,158,11' : '16,185,129';
+    if (load.taken > 0) {                                     // heat by occupied time: green < 35 % · amber 35–74 % · red ≥ 75 %
+      const rgb = load.pct >= 75 ? '239,68,68' : load.pct >= 35 ? '245,158,11' : '16,185,129';
       btn.classList.add('heat');
-      btn.style.background = `rgba(${rgb},${(0.2 + occ * 0.05).toFixed(2)})`;
+      btn.style.background = `rgba(${rgb},${(0.2 + load.pct * 0.005).toFixed(2)})`;
     }
-    btn.title = occ ? `${occ} z ${DESKS.length} stolov obsadených` : 'Všetky stoly voľné';
+    btn.title = load.taken ? `${load.pct} % obsadenosť · ${load.taken} z ${DESKS.length} stolov s rezerváciou` : 'Všetky stoly voľné';
     btn.addEventListener('click', () => {
       state.selectedDay = (state.selectedDay === d) ? null : d;
       render();
@@ -1474,14 +1470,14 @@ function renderDayHeader() {
     badgeEl.innerHTML   = actHtml ? `<div style="text-align:right">${actHtml}</div>` : '';
   } else {
     const bk  = state.bookings[dayKey(year, month, selectedDay)] || {};
-    const occ = Object.keys(bk).length;
+    const load = dayLoad(bk);
     const past = isPastDay(year, month, selectedDay);
     titleEl.textContent = `${selectedDay}. ${MONTHS[month]} ${year}`;
     subEl.innerHTML = past
       ? `<span style="color:#f59e0b;font-weight:600">${ic('lock','ico-sm ico-inline')} Minulý deň — rezervácie sú uzamknuté</span>`
-      : (occ > 0 ? `Obsadených ${occ} z 8 stolov` : 'Všetky stoly sú voľné — klikni na stôl pre rezerváciu');
-    const pct = Math.round(occ/8*100);
-    const col = occ >= 6 ? '#ef4444' : occ >= 3 ? '#f59e0b' : '#10b981';
+      : (load.taken > 0 ? `Rezervácie na ${load.taken} z ${DESKS.length} stolov` : 'Všetky stoly sú voľné — klikni na stôl pre rezerváciu');
+    const pct = load.pct;
+    const col = pct >= 75 ? '#ef4444' : pct >= 35 ? '#f59e0b' : '#10b981';
     badgeEl.innerHTML = `<div style="text-align:right">
       <div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:${past?'#94a3b8':col};line-height:1" class="pct">${pct}%</div>
       <div style="font-size:10px;color:#94a3b8;margin-bottom:2px">${past ? ic('lock','ico-sm ico-inline') + ' uzamknuté' : 'obsadenosť'}</div>
@@ -1489,6 +1485,20 @@ function renderDayHeader() {
     </div>`;
     countUp(badgeEl.querySelector('.pct'), pct);
   }
+}
+
+// Occupancy is measured in booked time, not in desks: 8 desks × the working window below = 100 %.
+// A "whole day" booking fills the window; a 2-hour booking fills only its part of it.
+const OCC_FROM = 8 * 60, OCC_TO = 17 * 60;
+function dayLoad(day) {
+  const span = OCC_TO - OCC_FROM;
+  let booked = 0, taken = 0;
+  DESKS.forEach(d => {
+    const l = (day && day[d.id]) || [];
+    if (l.length) taken++;
+    l.forEach(b => { booked += Math.max(0, Math.min(b.end, OCC_TO) - Math.max(b.start, OCC_FROM)); });
+  });
+  return { pct: Math.round(booked / (DESKS.length * span) * 100), taken };
 }
 
 // ─── Time slots ───────────────────────────────────────────────────────────────
@@ -1963,35 +1973,40 @@ function initUI() {
 }
 
 // ─── Main render ──────────────────────────────────────────────────────────────
-// ─── Celebration after a booking: the desk hops, a sheep runs across the screen ───
-const SHEEP_SVG = (() => {
-  const puffs = [[44,42,15],[60,36,17],[78,40,15],[56,50,13],[72,50,12],[34,50,10],[24,45,6]];
-  const rim  = puffs.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r + 1.6}"/>`).join('');
-  const wool = puffs.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('');
-  return `<svg viewBox="0 0 120 80" aria-hidden="true">
-    <ellipse cx="58" cy="77" rx="34" ry="3.5" fill="rgba(0,0,0,.18)"/>
-    <g stroke="#334155" stroke-width="5" stroke-linecap="round">
-      <line class="leg" x1="40" y1="52" x2="40" y2="70"/><line class="leg b" x1="52" y1="52" x2="52" y2="70"/>
-      <line class="leg b" x1="76" y1="52" x2="76" y2="70"/><line class="leg" x1="88" y1="52" x2="88" y2="70"/>
-    </g>
-    <g fill="#cbd5e1">${rim}</g><g fill="#f8fafc">${wool}</g>
-    <ellipse cx="101" cy="42" rx="10" ry="12" fill="#334155" transform="rotate(12 101 42)"/>
-    <circle cx="97" cy="30" r="7" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
-    <ellipse cx="91" cy="37" rx="5" ry="2.6" fill="#475569" transform="rotate(-25 91 37)"/>
-    <circle cx="105" cy="39" r="2.1" fill="#fff"/><circle cx="105.7" cy="39" r="1" fill="#0f172a"/>
-  </svg>`;
-})();
+// ─── Celebration after a booking: the desk hops, a ring ripples out and confetti bursts from it ───
+function celebrationBurst(deskId, color) {
+  const d = document.querySelector(`.desk-btn[data-desk="${deskId}"] .desk-body`);
+  if (!d || !document.body.animate) return;
+  const r = d.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const layer = document.createElement('div');
+  layer.className = 'burst';
+  document.body.appendChild(layer);
 
-function runSheep() {
-  if (window.matchMedia('(prefers-reduced-motion:reduce)').matches || !document.body.animate) return;
-  const el = document.createElement('div');
-  el.className = 'sheep-run';
-  el.innerHTML = SHEEP_SVG;
-  document.body.appendChild(el);
-  const w = window.innerWidth;
-  const a = el.animate([{ transform: 'translateX(-160px)' }, { transform: `translateX(${w + 40}px)` }],
-                       { duration: Math.max(1800, (w + 200) / 0.62), easing: 'linear' });
-  a.onfinish = () => el.remove();
+  const ring = document.createElement('i');
+  ring.className = 'burst-ring';
+  ring.style.cssText = `left:${cx}px;top:${cy}px;border-color:${color}`;
+  layer.appendChild(ring);
+  ring.animate([{ transform: 'translate(-50%,-50%) scale(.2)', opacity: .9 }, { transform: 'translate(-50%,-50%) scale(3.4)', opacity: 0 }],
+               { duration: 750, easing: 'ease-out', fill: 'forwards' });
+
+  const colors = [color, color, '#fbbf24', '#34d399', '#60a5fa', '#f472b6', '#ffffff'];
+  for (let i = 0; i < 34; i++) {
+    const p = document.createElement('i');
+    p.className = 'burst-p';
+    const ang = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.3;      // fan opening upwards
+    const v = 90 + Math.random() * 160;
+    const dx = Math.cos(ang) * v, dy = Math.sin(ang) * v, fall = 80 + Math.random() * 100;
+    const rot = (Math.random() - .5) * 760;
+    p.style.cssText = `left:${cx}px;top:${cy}px;background:${colors[i % colors.length]};width:${5 + Math.random() * 4}px;height:${4 + Math.random() * 6}px;border-radius:${Math.random() < .35 ? '50%' : '1px'}`;
+    layer.appendChild(p);
+    p.animate([
+      { transform: 'translate(-50%,-50%) translate(0,0) rotate(0deg)', opacity: 1 },
+      { transform: `translate(-50%,-50%) translate(${dx}px,${dy}px) rotate(${rot * .5}deg)`, opacity: 1, offset: .45, easing: 'ease-in' },
+      { transform: `translate(-50%,-50%) translate(${dx * 1.25}px,${dy + fall}px) rotate(${rot}deg)`, opacity: 0 }
+    ], { duration: 1100 + Math.random() * 500, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' });
+  }
+  setTimeout(() => layer.remove(), 1900);
 }
 
 let celebrate_ = null;                       // { deskId, t0 }
@@ -2016,7 +2031,7 @@ function celebrate(deskId) {
   if (window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
   celebrate_ = { deskId, t0: performance.now() };
   applyCelebration();
-  runSheep();
+  celebrationBurst(deskId, colorOf(state.activeName));
 }
 
 let shownPct = 0, pctRaf = null;
@@ -2060,8 +2075,8 @@ function renderAuthLive() {
   if (!t || !d || !liveReady) return;
   const now = new Date();
   const day = state.bookings[dayKey(now.getFullYear(), now.getMonth(), now.getDate())] || {};
-  const taken = DESKS.filter(x => (day[x.id] || []).length).length;
-  t.innerHTML = `<span class="live-pulse"></span><span>Dnes obsadené <b>${taken}</b> z ${DESKS.length} stolov</span>`;
+  const load = dayLoad(day);
+  t.innerHTML = `<span class="live-pulse"></span><span>Dnes obsadené <b>${load.pct} %</b> · ${load.taken} z ${DESKS.length} stolov</span>`;
   d.innerHTML = DESKS.map(desk => {
     const lay = deskLayout(day[desk.id] || []);
     let bg = 'var(--dot-free)';
